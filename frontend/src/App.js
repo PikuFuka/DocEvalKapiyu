@@ -1,7 +1,9 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { NotificationProvider } from './components/Notification';
 import Navbar from './components/Navbar';
+import ScrollToTop from './components/ScrollToTop';
 import LoadingOverlay from './components/LoadingOverlay';
 import Home from './components/Home';
 import Upload from './components/Upload';
@@ -82,9 +84,12 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <AppContent />
-      </Router>
+      <NotificationProvider>
+        <Router>
+          <ScrollToTop />
+          <AppContent />
+        </Router>
+      </NotificationProvider>
     </AuthProvider>
   );
 }

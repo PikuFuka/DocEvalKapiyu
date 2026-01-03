@@ -1,33 +1,19 @@
 //frontend/src/components/AnalyticsDashboard.js
 
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend
-} from "recharts";
+import { motion } from "framer-motion";
 import api from "../services/api";
 import RecommendationPanel from "./RecommendationPanel";
 
 // --- Design Configuration ---
-const CHART_COLORS = ["#6366f1", "#8b5cf6", "#ec4899", "#14b8a6"]; 
-
-// Custom Tooltip
-const CustomTooltip = ({ active, payload, label }) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="custom-tooltip">
-        <p className="tooltip-label">{label}</p>
-        <div className="tooltip-items">
-            {payload.map((entry, index) => (
-                <div key={index} className="tooltip-item" style={{ color: entry.color }}>
-                    <span className="bullet" style={{backgroundColor: entry.color}}></span>
-                    {entry.name}: <strong>{Number(entry.value).toFixed(2)}</strong>
-                </div>
-            ))}
-        </div>
-      </div>
-    );
-  }
-  return null;
+const COLORS = {
+  primary: ['#6366f1', '#818cf8'], // Indigo
+  secondary: ['#ec4899', '#f472b6'], // Pink
+  success: ['#10b981', '#34d399'], // Emerald
+  warning: ['#f59e0b', '#fbbf24'], // Amber
+  info: ['#06b6d4', '#22d3ee'], // Cyan
+  dark: '#1e293b',
+  light: '#f8fafc'
 };
 
 const DEFAULT_CAPS = { "KRA I": 100, "KRA II": 100, "KRA III": 100, "KRA IV": 100 };
@@ -104,12 +90,52 @@ export default function AnalyticsDashboard() {
         subscores, 
         caps, 
         summary,
-        promotion: data.promotion || {} // Ensure promotion data is passed
+        promotion: data.promotion || {} 
     };
   }, [data]);
 
-  if (loading) return <div className="analytics-loading"><div className="spinner"></div><p>Calculating NBC 461 Metrics...</p></div>;
-  if (error) return <div className="analytics-error">Unable to load analytics data.</div>;
+  if (loading) return (
+    <div className="min-vh-100 d-flex flex-column align-items-center justify-content-center position-relative overflow-hidden" style={{ background: '#f8fafc' }}>
+        {/* Background Effects */}
+        <div className="position-absolute top-0 start-0 w-100 h-100 overflow-hidden">
+            <div className="position-absolute top-50 start-50 translate-middle rounded-circle blur-3xl opacity-20" style={{ width: '600px', height: '600px', background: '#6366f1' }}></div>
+            <div className="position-absolute top-50 start-50 translate-middle rounded-circle blur-3xl opacity-20" style={{ width: '400px', height: '400px', background: '#ec4899', transform: 'translate(50%, 50%)' }}></div>
+        </div>
+
+        <div className="position-relative z-1 text-center">
+            <motion.div 
+                className="mb-4 position-relative d-inline-block"
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            >
+                <div className="rounded-circle bg-white shadow-lg d-flex align-items-center justify-content-center position-relative z-2" style={{ width: '80px', height: '80px' }}>
+                    <i className="bi bi-bar-chart-fill text-primary fs-1"></i>
+                </div>
+                <motion.div 
+                    className="position-absolute top-50 start-50 translate-middle rounded-circle bg-primary opacity-20"
+                    style={{ width: '100px', height: '100px' }}
+                    animate={{ scale: [1, 1.5, 1], opacity: [0.2, 0, 0.2] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                />
+            </motion.div>
+            
+            <h4 className="fw-bold text-dark mb-2">Analyzing Performance</h4>
+            <p className="text-muted mb-4">Gathering your latest metrics and scores...</p>
+            
+            <div className="progress bg-white shadow-sm rounded-pill overflow-hidden mx-auto" style={{ width: '200px', height: '6px' }}>
+                <motion.div 
+                    className="progress-bar bg-gradient-primary"
+                    style={{ background: 'linear-gradient(90deg, #6366f1, #ec4899)' }}
+                    initial={{ width: "0%" }}
+                    animate={{ width: "100%" }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                />
+            </div>
+        </div>
+    </div>
+  );
+  
+  if (error) return <div className="p-5 text-center text-danger">Unable to load analytics data.</div>;
   if (!normalized) return null;
 
   // Process Data for Cards
@@ -126,14 +152,7 @@ export default function AnalyticsDashboard() {
     return { kra, subs, totalScore, cap, pct, status };
   });
 
-  // Process Data for Bar Chart
-  const stackedData = Object.keys(normalized.subscores).map(kra => {
-    const entry = { label: kra };
-    normalized.subscores[kra].forEach(s => { entry[s.key] = s.score; });
-    return entry;
-  });
-
-  // Extract Promotion Data with defaults
+  // Extract Promotion Data
   const promo = {
       current_rank: normalized.promotion.current_rank || "Instructor I",
       weighted_score: normalized.promotion.weighted_score || 0,
@@ -143,152 +162,306 @@ export default function AnalyticsDashboard() {
   };
 
   return (
-    <div className="analytics-dashboard">
-      <header className="dashboard-header">
-        <div>
-            <h1>NBC 461 Evaluation</h1>
-            <p className="subtitle">Cycle 9 Faculty Reclassification Analytics</p>
-        </div>
-        <div className="header-actions">
-            <span className="rank-badge current">
-                Current: <strong>{promo.current_rank}</strong>
-            </span>
-        </div>
-      </header>
+    <div className="analytics-dashboard min-vh-100 py-5 position-relative overflow-hidden" style={{ background: '#f1f5f9' }}>
+      {/* Ambient Background */}
+      <div className="position-absolute top-0 start-0 w-100 h-100 overflow-hidden" style={{ zIndex: 0 }}>
+        <div className="position-absolute top-0 end-0 rounded-circle blur-3xl opacity-20" style={{ width: '800px', height: '800px', background: '#6366f1', transform: 'translate(30%, -30%)' }}></div>
+        <div className="position-absolute bottom-0 start-0 rounded-circle blur-3xl opacity-20" style={{ width: '600px', height: '600px', background: '#ec4899', transform: 'translate(-30%, 30%)' }}></div>
+      </div>
 
-      {/* --- PROMOTION PREDICTION CARD (NEW) --- */}
-      <section className="promotion-hero">
-         <div className="promo-card">
-            <div className="promo-main">
-                {/* Left Side: Score */}
-                <div className="promo-score">
-                    <span className="score-lbl">Weighted Score</span>
-                    <span className="score-val">{promo.weighted_score.toFixed(2)}</span>
-                    <span className="score-max">/ 100.00</span>
+      <div className="container position-relative z-1">
+        <motion.header 
+          className="mb-5 d-flex justify-content-between align-items-end"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <div>
+            <h1 className="fw-bold text-dark mb-1" style={{ letterSpacing: '-1px' }}>NBC 461 Analytics</h1>
+            <p className="text-muted mb-0">Cycle 9 Faculty Reclassification & Performance Overview</p>
+          </div>
+          <div className="d-none d-md-block text-end">
+            <div className="small text-uppercase text-muted fw-bold tracking-wide">Current Cycle</div>
+            <div className="h5 mb-0 fw-bold text-primary">2023-2026</div>
+          </div>
+        </motion.header>
+
+        {/* Hero Section - Glassmorphism */}
+        <motion.div 
+          className="card border-0 shadow-lg rounded-5 overflow-hidden mb-5 position-relative"
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.1 }}
+          style={{ 
+            background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+            color: 'white'
+          }}
+        >
+          <div className="position-absolute w-100 h-100" style={{ background: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.05\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }}></div>
+          
+          <div className="card-body p-4 p-lg-5 position-relative z-1">
+            <div className="row align-items-center">
+              <div className="col-lg-7 mb-4 mb-lg-0">
+                <div className="d-flex flex-wrap gap-3 mb-4">
+                  <div className="d-flex align-items-center gap-2 bg-white bg-opacity-10 rounded-pill px-3 py-2 backdrop-blur">
+                    <span className="text-white-50 small text-uppercase fw-bold">Current</span>
+                    <span className="fw-bold">{promo.current_rank}</span>
+                  </div>
+                  <div className="d-flex align-items-center gap-2 bg-white text-primary rounded-pill px-3 py-2 shadow-sm">
+                    <i className="bi bi-stars"></i>
+                    <span className="small text-uppercase fw-bold">Projected</span>
+                    <span className="fw-bold">{promo.projected_rank}</span>
+                  </div>
                 </div>
                 
-                {/* Right Side: Details & Progress */}
-                <div className="promo-details">
-                    <h3>Projected Rank: <span className="highlight">{promo.projected_rank}</span></h3>
-                    <p className="promo-status">{promo.status_message}</p>
-                    
-                    {/* Visual Bracket Progress */}
-                    {promo.points_to_next > 0 ? (
-                        <div className="bracket-progress">
-                           <div className="bracket-info">
-                              <span>Next Bracket (+{promo.points_to_next.toFixed(2)} pts)</span>
-                              <span>Target: {(promo.weighted_score + promo.points_to_next).toFixed(0)}</span>
-                           </div>
-                           <div className="progress-bar-bg">
-                              {/* Calculate rough percentage of the 10-point bracket filled */}
-                              <div 
-                                className="progress-bar-fill" 
-                                style={{width: `${(promo.weighted_score % 10) * 10}%`}}
-                              ></div>
-                           </div>
+                <h2 className="display-6 fw-bold mb-3">{promo.status_message}</h2>
+                
+                {promo.points_to_next > 0 && (
+                  <div className="mt-4">
+                    <div className="d-flex justify-content-between text-white-50 small mb-2">
+                        <span>Progress to next bracket</span>
+                        <span>{(promo.weighted_score + promo.points_to_next).toFixed(0)} pts target</span>
+                    </div>
+                    <div className="progress bg-white bg-opacity-10 rounded-pill" style={{ height: '10px' }}>
+                        <motion.div 
+                            className="progress-bar bg-warning rounded-pill"
+                            initial={{ width: 0 }}
+                            animate={{ width: `${(promo.weighted_score % 10) * 10}%` }}
+                            transition={{ duration: 1.5, ease: "easeOut" }}
+                        />
+                    </div>
+                    <div className="mt-2 small text-white-50">
+                        <i className="bi bi-info-circle me-2"></i>
+                        Need <strong className="text-white">{promo.points_to_next.toFixed(2)}</strong> more points
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              <div className="col-lg-5 text-center">
+                <div className="position-relative d-inline-block">
+                    <motion.div 
+                        className="rounded-circle d-flex align-items-center justify-content-center shadow-lg position-relative z-2"
+                        style={{ width: '200px', height: '200px', background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.2)' }}
+                        animate={{ y: [0, -10, 0] }}
+                        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                    >
+                        <div className="text-center">
+                            <div className="display-4 fw-bold mb-0">{promo.weighted_score.toFixed(2)}</div>
+                            <div className="small text-uppercase tracking-widest opacity-75">Total Points</div>
                         </div>
-                    ) : (
-                        <div className="bracket-success">Max Sub-rank Bracket Reached</div>
-                    )}
+                    </motion.div>
+                    
+                    {/* Decorative Rings */}
+                    <motion.div 
+                        className="position-absolute top-50 start-50 translate-middle rounded-circle border border-white opacity-10"
+                        style={{ width: '260px', height: '260px' }}
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                    />
+                    <motion.div 
+                        className="position-absolute top-50 start-50 translate-middle rounded-circle border border-white opacity-10 border-dashed"
+                        style={{ width: '320px', height: '320px' }}
+                        animate={{ rotate: -360 }}
+                        transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+                    />
                 </div>
-            </div>
-         </div>
-      </section>
-
-      {/* Main Grid: KRA Tiles */}
-      <section className="kra-grid">
-        {kraCards.map((card, index) => (
-          <div key={card.kra} className={`kra-tile ${card.status}`} style={{ animationDelay: `${index * 100}ms` }}>
-            <div className="tile-header">
-              <span className="kra-badge">{card.kra}</span>
-              <div className="score-circle">
-                 <svg viewBox="0 0 36 36" className="circular-chart">
-                    <path className="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                    <path className="circle" strokeDasharray={`${card.pct}, 100`} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                 </svg>
-                 <span className="score-text">{Math.round(card.pct)}%</span>
               </div>
             </div>
-
-            <div className="tile-main-score">
-                <span className="current">{card.totalScore.toFixed(2)}</span>
-                <span className="cap">/ {card.cap}</span>
-            </div>
-
-            <div className="tile-sub-list">
-              {card.subs.map((s) => {
-                const percent = s.cap ? Math.min(100, (s.score / s.cap) * 100) : 0;
-                return (
-                  <div className="sub-item" key={s.key}>
-                    <div className="sub-info">
-                        <span className="sub-name">{s.name}</span>
-                        <span className="sub-val">{s.score.toFixed(1)}/{s.cap}</span>
-                    </div>
-                    <div className="progress-track">
-                      <div className="progress-fill" style={{ width: `${percent}%` }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
           </div>
-        ))}
-      </section>
+        </motion.div>
 
-      {/* Analytics Row: Charts & Gaps */}
-      <section className="analytics-row">
-        {/* Chart Tile */}
-        <div className="card chart-card">
-          <div className="card-header">
-            <h3>Composition Breakdown</h3>
-            <span className="card-tag">Stacked View</span>
-          </div>
-          <div className="chart-container">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart layout="vertical" data={stackedData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
-                <XAxis type="number" hide />
-                <YAxis type="category" dataKey="label" tick={{fontSize: 12, fill: '#64748b'}} width={60} axisLine={false} tickLine={false} />
-                <Tooltip content={<CustomTooltip />} cursor={{fill: 'transparent'}} />
-                <Legend iconType="circle" wrapperStyle={{ paddingTop: '10px' }}/>
-                <Bar dataKey="A" stackId="a" fill={CHART_COLORS[0]} radius={[0, 4, 4, 0]} barSize={32} />
-                <Bar dataKey="B" stackId="a" fill={CHART_COLORS[1]} radius={[0, 4, 4, 0]} barSize={32} />
-                <Bar dataKey="C" stackId="a" fill={CHART_COLORS[2]} radius={[0, 4, 4, 0]} barSize={32} />
-                <Bar dataKey="D" stackId="a" fill={CHART_COLORS[3]} radius={[0, 4, 4, 0]} barSize={32} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        {/* Main Content Grid */}
+        <div className="row g-4">
+            {/* Left Column: Charts & Details */}
+            <div className="col-lg-8">
+                {/* KRA Breakdown Cards */}
+                <div className="row g-4">
+                    {kraCards.map((card, index) => (
+                        <div key={card.kra} className="col-md-6">
+                            <motion.div 
+                                className="card border-0 shadow-sm rounded-4 h-100 overflow-hidden group-hover"
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.2 + index * 0.1 }}
+                                whileHover={{ y: -5, boxShadow: '0 15px 30px rgba(0,0,0,0.1)' }}
+                                style={{
+                                    background: 'white',
+                                    border: '1px solid rgba(0,0,0,0.05)'
+                                }}
+                            >
+                                <div className="card-body p-4">
+                                    <div className="d-flex justify-content-between align-items-start mb-4">
+                                        <div>
+                                            <h5 className="fw-bold text-dark mb-1">{card.kra}</h5>
+                                            <div className="small text-muted d-flex align-items-center gap-2">
+                                                <i className="bi bi-trophy text-warning"></i>
+                                                <span>Score: <strong>{card.totalScore.toFixed(2)}</strong> / {card.cap}</span>
+                                            </div>
+                                        </div>
+                                        <div 
+                                            className="rounded-circle d-flex align-items-center justify-content-center shadow-sm"
+                                            style={{ 
+                                                width: '48px', height: '48px', 
+                                                background: card.status === 'good' ? 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)' : 
+                                                            card.status === 'warn' ? 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)' : 
+                                                            'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)',
+                                                color: card.status === 'good' ? '#166534' : card.status === 'warn' ? '#b45309' : '#991b1b'
+                                            }}
+                                        >
+                                            <span className="fw-bold">{Math.round(card.pct)}%</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="mb-4">
+                                        <div className="d-flex justify-content-between small mb-1">
+                                            <span className="text-muted fw-bold text-uppercase" style={{fontSize: '0.7rem'}}>Overall Progress</span>
+                                        </div>
+                                        <div className="progress" style={{ height: '8px', backgroundColor: '#f1f5f9', borderRadius: '10px' }}>
+                                            <motion.div 
+                                                className="progress-bar rounded-pill"
+                                                style={{ 
+                                                    background: card.status === 'good' ? 'linear-gradient(90deg, #10b981, #34d399)' : 
+                                                                card.status === 'warn' ? 'linear-gradient(90deg, #f59e0b, #fbbf24)' : 
+                                                                'linear-gradient(90deg, #ef4444, #f87171)'
+                                                }}
+                                                initial={{ width: 0 }}
+                                                animate={{ width: `${Math.min(100, card.pct)}%` }}
+                                                transition={{ duration: 1, delay: 0.5 }}
+                                            />
+                                        </div>
+                                    </div>
 
-        {/* Gap Analysis Tile */}
-        <div className="card gap-card">
-          <div className="card-header">
-            <h3>Opportunity Gaps</h3>
-            <span className="card-tag alert">Action Needed</span>
-          </div>
-          <div className="gap-list">
-            {kraCards.map(k => {
-              const gap = Math.max(0, (k.cap || 100) - k.totalScore);
-              const pctGap = k.cap ? (gap / k.cap) * 100 : 0;
-              return (
-                <div key={k.kra} className="gap-item">
-                  <div className="gap-info">
-                    <span className="gap-label">{k.kra}</span>
-                    <span className="gap-value">Missing <strong>{gap.toFixed(2)}</strong> pts</span>
-                  </div>
-                  <div className="gap-visual">
-                    <div className="gap-line-bg">
-                        <div className="gap-line-fill" style={{width: `${pctGap}%`}}></div>
-                    </div>
-                  </div>
+                                    <div className="d-flex flex-column gap-3">
+                                        {card.subs.map((s, i) => {
+                                            const subPct = s.cap ? Math.min(100, (s.score / s.cap) * 100) : 0;
+                                            return (
+                                                <div key={s.key} className="position-relative">
+                                                    <div className="d-flex align-items-center justify-content-between small mb-1">
+                                                        <span className="text-dark fw-medium text-truncate" style={{ maxWidth: '75%' }}>{s.name}</span>
+                                                        <span className="fw-bold text-primary">{s.score.toFixed(1)}</span>
+                                                    </div>
+                                                    <div className="progress" style={{ height: '4px', backgroundColor: '#f8fafc' }}>
+                                                        <motion.div 
+                                                            className="progress-bar rounded-pill bg-primary opacity-75"
+                                                            initial={{ width: 0 }}
+                                                            animate={{ width: `${subPct}%` }}
+                                                            transition={{ duration: 0.8, delay: 0.6 + i * 0.1 }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </motion.div>
+                        </div>
+                    ))}
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
+            </div>
 
-      {normalized && <RecommendationPanel data={normalized} />}
+            {/* Right Column: Gap Analysis */}
+            <div className="col-lg-4">
+                <motion.div 
+                    className="card border-0 rounded-4 h-100 overflow-hidden position-relative shadow-lg"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.5 }}
+                    style={{ 
+                        background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)',
+                        color: 'white'
+                    }}
+                >
+                    {/* Decorative Elements */}
+                    <div className="position-absolute top-0 end-0 p-3 opacity-10">
+                        <i className="bi bi-grid-3x3-gap-fill display-1"></i>
+                    </div>
+
+                    <div className="card-header bg-transparent border-0 px-4 pt-4 pb-2 position-relative z-1">
+                        <div className="d-flex align-items-center justify-content-between">
+                            <div>
+                                <h6 className="fw-bold text-uppercase text-white mb-1 tracking-wide">Gap Analysis</h6>
+                                <p className="text-white-50 small mb-0">Target vs Actual</p>
+                            </div>
+                            <div className="bg-white bg-opacity-10 rounded-circle p-2">
+                                <i className="bi bi-bullseye text-warning"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="card-body px-4 pb-4 pt-2 position-relative z-1 custom-scrollbar" style={{ maxHeight: '800px', overflowY: 'auto' }}>
+                        <div className="d-flex flex-column gap-3">
+                            {kraCards.map((k, idx) => {
+                                const gap = Math.max(0, (k.cap || 100) - k.totalScore);
+                                const pct = k.cap ? Math.min(100, (k.totalScore / k.cap) * 100) : 0;
+                                const isFull = pct >= 100;
+                                
+                                return (
+                                    <motion.div 
+                                        key={k.kra}
+                                        className="p-3 rounded-4 position-relative overflow-hidden"
+                                        initial={{ opacity: 0, x: 20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: 0.6 + idx * 0.1 }}
+                                        style={{ 
+                                            background: 'rgba(255,255,255,0.05)',
+                                            border: '1px solid rgba(255,255,255,0.1)'
+                                        }}
+                                        whileHover={{ scale: 1.02, background: 'rgba(255,255,255,0.08)' }}
+                                    >
+                                        <div className="d-flex justify-content-between align-items-center mb-2">
+                                            <span className="fw-bold text-white small">{k.kra}</span>
+                                            {isFull ? (
+                                                <span className="badge bg-success bg-opacity-20 text-success rounded-pill px-2 py-1" style={{fontSize: '0.6rem'}}>MAXED</span>
+                                            ) : (
+                                                <span className="badge bg-warning bg-opacity-20 text-black rounded-pill px-2 py-1" style={{fontSize: '0.6rem'}}>-{gap.toFixed(0)}</span>
+                                            )}
+                                        </div>
+
+                                        <div className="d-flex align-items-end justify-content-between mb-2">
+                                            <div className="display-6 fw-bold lh-1">{Math.round(pct)}<span className="fs-6 text-white-50">%</span></div>
+                                            <div className="text-end">
+                                                <div className="small text-white-50">Score</div>
+                                                <div className="fw-bold">{k.totalScore.toFixed(1)}</div>
+                                            </div>
+                                        </div>
+
+                                        <div className="progress" style={{ height: '4px', background: 'rgba(255,255,255,0.1)' }}>
+                                            <motion.div 
+                                                className="progress-bar"
+                                                style={{ 
+                                                    background: isFull ? '#10b981' : 'linear-gradient(90deg, #6366f1, #818cf8)'
+                                                }}
+                                                initial={{ width: 0 }}
+                                                animate={{ width: `${pct}%` }}
+                                                transition={{ duration: 1, delay: 0.8 + idx * 0.1 }}
+                                            />
+                                        </div>
+                                    </motion.div>
+                                );
+                            })}
+                        </div>
+                        
+                        <div className="mt-4 pt-3 border-top border-white border-opacity-10 text-center">
+                            <p className="small text-white-50 mb-0">
+                                Total Points Missing: <span className="text-white fw-bold">{kraCards.reduce((sum, k) => sum + Math.max(0, k.cap - k.totalScore), 0).toFixed(0)}</span>
+                            </p>
+                        </div>
+                    </div>
+                </motion.div>
+            </div>
+        </div>
+
+        {normalized && (
+          <motion.div
+            className="mt-5"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8 }}
+          >
+            <RecommendationPanel data={normalized} />
+          </motion.div>
+        )}
+      </div>
     </div>
   );
 }

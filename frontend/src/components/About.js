@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import "aos/dist/aos.css";
 import AOS from "aos";
@@ -8,123 +9,160 @@ AOS.init();
 
 const About = () => {
   return (
-    <section className="about-section py-5 bg-light" id="about">
-      <div className="container">
-        {/* Section Header */}
-        <motion.div
-          className="text-center mb-5"
-          initial={{ opacity: 0, y: -30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-        >
-          <h1 className="fw-bold text-primary mb-3">About DocEvalKapiyu</h1>
-          <p className="text-muted lead">
-            Empowering institutions with intelligent and transparent faculty evaluation.
-          </p>
-          <div className="underline mx-auto mt-3"></div>
-        </motion.div>
-
-        {/* About Content */}
-        <div className="row align-items-center">
+    <div className="about-page bg-white">
+      {/* Hero Section - Colorful & Modern */}
+      <section className="about-hero py-5 position-relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)' }}>
+        <div className="position-absolute top-0 end-0 rounded-circle bg-primary opacity-10 blur-3xl" 
+             style={{ width: '500px', height: '500px', transform: 'translate(30%, -30%)', filter: 'blur(80px)' }}></div>
+        
+        <div className="container py-5 text-center position-relative z-1">
           <motion.div
-            className="col-md-6 mb-4 mb-md-0"
-            data-aos="fade-right"
-            data-aos-duration="800"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
           >
-          <img
-            src="/images/image.png"
-            alt="Faculty Evaluation Illustration"
-            className="img-fluid rounded-4 shadow-lg"
-          />
-          </motion.div>
-
-          <motion.div
-            className="col-md-6"
-            data-aos="fade-left"
-            data-aos-duration="800"
-          >
-            <h2 className="fw-bold text-dark mb-3">What We Do</h2>
-            <p className="text-secondary">
-              <strong>DocEvalKapiyu</strong> is a web-based faculty evaluation system
-              built to enhance transparency and efficiency within educational institutions.
-              It allows administrators to evaluate faculty performance based on specific
-              criteria while maintaining a user-friendly experience for both technical
-              and non-technical users.
+            <h6 className="text-primary fw-bold text-uppercase tracking-wide mb-3">About Us</h6>
+            <h1 className="display-4 fw-bold text-dark mb-4">Revolutionizing Faculty Evaluation</h1>
+            <p className="lead text-muted mx-auto" style={{ maxWidth: '700px' }}>
+              We are dedicated to bringing transparency, efficiency, and fairness to academic assessments through the power of artificial intelligence.
             </p>
-
-            <ul className="list-unstyled text-secondary mt-3">
-              <li>✅ Streamlined faculty evaluation process</li>
-              <li>✅ Modern and responsive user interface</li>
-              <li>✅ Secure authentication and data management</li>
-              <li>✅ Comprehensive reports and analytics</li>
-            </ul>
-
           </motion.div>
         </div>
+      </section>
 
-        {/* Mission & Vision */}
-        <motion.div
-          className="row mt-5 pt-5"
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          transition={{ duration: 0.8 }}
-        >
-          <div className="col-md-6 mb-4">
-            <div className="p-4 bg-white shadow-sm rounded-4" data-aos="zoom-in">
-              <h3 className="text-primary fw-bold mb-3">Our Mission</h3>
-              <p className="text-secondary">
-                To build a reliable and fair faculty evaluation platform that helps
-                educational institutions make informed decisions, promote academic
-                excellence, and ensure professional growth.
-              </p>
+      {/* Main Content - Clean Grid */}
+      <section className="py-5">
+        <div className="container py-5">
+          <div className="row align-items-center gy-5">
+            <div className="col-lg-6" data-aos="fade-right">
+              <div className="pe-lg-5">
+                <h2 className="fw-bold mb-4">Our Story</h2>
+                <p className="text-muted mb-4">
+                  DocEvalKapiyu was born from the need for a more efficient, transparent, and objective way to evaluate faculty performance. Traditional methods often involve manual paperwork and subjective biases.
+                </p>
+                <p className="text-muted mb-4">
+                  Our platform leverages state-of-the-art Machine Learning and Natural Language Processing to automate the classification and scoring of academic documents, ensuring every faculty member is evaluated fairly based on established criteria.
+                </p>
+              </div>
+            </div>
+            <div className="col-lg-6 d-flex justify-content-center" data-aos="fade-left">
+              <div className="bg-light rounded-4 p-4 position-relative w-100" style={{ maxWidth: '500px' }}>
+                <div className="position-absolute top-0 start-0 translate-middle bg-primary rounded-circle" style={{ width: '100px', height: '100px', opacity: 0.1, zIndex: 0 }}></div>
+                <img
+                  src="/images/image.png"
+                  alt="About Us"
+                  className="img-fluid rounded-3 shadow-sm position-relative z-1 w-100"
+                  loading="eager"
+                  fetchPriority="high"
+                />
+                <div className="position-absolute bottom-0 end-0 translate-middle bg-warning rounded-circle" style={{ width: '80px', height: '80px', opacity: 0.1, zIndex: 0 }}></div>
+              </div>
             </div>
           </div>
+        </div>
+      </section>
 
-          <div className="col-md-6 mb-4">
-            <div className="p-4 bg-white shadow-sm rounded-4" data-aos="zoom-in">
-              <h3 className="text-primary fw-bold mb-3">Our Vision</h3>
-              <p className="text-secondary">
-                To become a trusted digital solution for faculty evaluation across
-                universities — promoting transparency, innovation, and quality education.
-              </p>
+      {/* Mission & Vision - Colorful Cards */}
+      <section className="py-5 bg-white">
+        <div className="container py-5">
+          <div className="row g-4">
+            <div className="col-md-6" data-aos="fade-up" data-aos-delay="100">
+              <div className="card h-100 border-0 shadow-sm p-4 bg-primary bg-opacity-10 hover-lift transition-all">
+                <div className="card-body">
+                  <div className="mb-4 text-primary bg-white d-inline-flex p-3 rounded-circle shadow-sm">
+                    <i className="bi bi-rocket-takeoff fs-2"></i>
+                  </div>
+                  <h3 className="fw-bold mb-3 text-dark">Our Mission</h3>
+                  <p className="text-dark opacity-75 mb-0">
+                    To empower educational institutions with intelligent tools that foster professional growth, academic integrity, and administrative efficiency through data-driven insights.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="col-md-6" data-aos="fade-up" data-aos-delay="200">
+              <div className="card h-100 border-0 shadow-sm p-4 bg-info bg-opacity-10 hover-lift transition-all">
+                <div className="card-body">
+                  <div className="mb-4 text-info bg-white d-inline-flex p-3 rounded-circle shadow-sm">
+                    <i className="bi bi-eye fs-2"></i>
+                  </div>
+                  <h3 className="fw-bold mb-3 text-dark">Our Vision</h3>
+                  <p className="text-dark opacity-75 mb-0">
+                    To be the global standard for academic document evaluation, creating a future where technology and education work in perfect harmony to recognize excellence.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
-        </motion.div>
-      </div>
+        </div>
+      </section>
 
-      {/* Floating Animation Background */}
-      <motion.div
-        className="floating-shape"
-        animate={{ y: [0, 15, 0] }}
-        transition={{ duration: 6, repeat: Infinity }}
-      ></motion.div>
+      {/* Core Values - Minimal List */}
+      <section className="py-5 bg-light">
+        <div className="container py-5">
+          <div className="text-center mb-5" data-aos="fade-up">
+            <h2 className="fw-bold">Core Values</h2>
+          </div>
+          <div className="row g-4">
+            {[
+              { title: 'Transparency', desc: 'Open and clear processes.', icon: 'bi-shield-check', color: 'primary' },
+              { title: 'Innovation', desc: 'Pushing boundaries with AI.', icon: 'bi-lightbulb', color: 'warning' },
+              { title: 'Integrity', desc: 'Commitment to fairness.', icon: 'bi-award', color: 'success' },
+              { title: 'Excellence', desc: 'Quality in every detail.', icon: 'bi-star', color: 'danger' },
+            ].map((value, i) => (
+              <div className="col-md-3 text-center" key={i} data-aos="fade-up" data-aos-delay={i * 100}>
+                <div className={`mb-3 text-${value.color} fs-1`}>
+                  <i className={`bi ${value.icon}`}></i>
+                </div>
+                <h5 className="fw-bold">{value.title}</h5>
+                <p className="text-muted small">{value.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       <style jsx>{`
-        .underline {
-          width: 80px;
-          height: 4px;
-          background-color: #0d6efd;
-          border-radius: 2px;
+        .hover-lift:hover {
+          transform: translateY(-5px);
+          box-shadow: 0 10px 20px rgba(0,0,0,0.05) !important;
         }
-
-        .floating-shape {
-          position: absolute;
-          bottom: -30px;
-          right: 10%;
-          width: 120px;
-          height: 120px;
-          background: rgba(13, 110, 253, 0.1);
-          border-radius: 50%;
-          filter: blur(15px);
-          z-index: -1;
-        }
-
-        .about-section {
-          position: relative;
-          overflow: hidden;
+        .transition-all {
+          transition: all 0.3s ease;
         }
       `}</style>
-    </section>
+
+      {/* Footer - Centered & Polished */}
+      <footer className="py-5 bg-white border-top">
+        <div className="container">
+          <div className="row gy-4 justify-content-center text-center">
+            <div className="col-lg-8">
+              <div className="mb-4">
+                <div className="d-inline-flex align-items-center justify-content-center bg-primary text-white rounded-3 mb-3" style={{ width: '40px', height: '40px' }}>
+                  <i className="bi bi-mortarboard-fill"></i>
+                </div>
+                <h4 className="fw-bold text-dark">DocEvalKapiyu</h4>
+                <p className="text-muted">Empowering academic excellence through intelligent evaluation.</p>
+              </div>
+              
+              <div className="d-flex justify-content-center gap-4 mb-4">
+                <Link to="/" className="text-decoration-none text-muted fw-medium hover-primary">Home</Link>
+                <Link to="/about" className="text-decoration-none text-muted fw-medium hover-primary">About</Link>
+                <Link to="/login" className="text-decoration-none text-muted fw-medium hover-primary">Login</Link>
+              </div>
+
+              <div className="d-flex justify-content-center gap-3 mb-4">
+                <a href="#" className="btn btn-light btn-sm rounded-circle text-primary"><i className="bi bi-facebook"></i></a>
+                <a href="#" className="btn btn-light btn-sm rounded-circle text-primary"><i className="bi bi-twitter"></i></a>
+                <a href="#" className="btn btn-light btn-sm rounded-circle text-primary"><i className="bi bi-linkedin"></i></a>
+              </div>
+            </div>
+          </div>
+          <div className="border-top pt-4 text-center">
+            <p className="text-muted small mb-0">&copy; {new Date().getFullYear()} DocEvalKapiyu. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
+    </div>
   );
 };
 
