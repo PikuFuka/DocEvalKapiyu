@@ -1,0 +1,41 @@
+# --- Core Django ---
+Django>=4.0
+djangorestframework
+django-cors-headers
+django-extensions
+django-filter
+gunicorn
+
+# --- Database & Config ---
+psycopg2-binary
+python-decouple
+python-dotenv
+
+# --- AI & LLM APIs ---
+google-generativeai
+groq
+requests
+
+# --- Machine Learning (PyTorch & Transformers) ---
+# We let pip pick the compatible versions to avoid conflicts
+torch --index-url https://download.pytorch.org/whl/cpu
+torchvision --index-url https://download.pytorch.org/whl/cpu
+transformers
+scikit-learn
+numpy
+pandas
+
+# --- Image Processing & OCR ---
+opencv-python-headless
+pytesseract
+pdf2image
+Pillow
+rapidocr-onnxruntime
+
+# --- PDF & File Handling ---
+PyPDF2
+PyMuPDF 
+python-docx
+python-pptx
+openpyxl
+filetype

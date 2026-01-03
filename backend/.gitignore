@@ -1,0 +1,35 @@
+# --- Python & General ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+.venv/
+venom/
+
+.vscode/
+.idea/
+.DS_Store
+
+*.h5
+*.pt
+*.pth
+*.pkl
+saved_tokenizer/
+/datasets/
+/models/
+
+*.log
+*.pot
+*.pyc
+__pycache__/
+db.sqlite3
+media/
+staticfiles/
+
+credentials.json
+client_secret.json
+service_account.json
+.env
