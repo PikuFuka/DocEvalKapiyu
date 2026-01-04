@@ -5,12 +5,12 @@
 
 [![React](https://img.shields.io/badge/Frontend-React-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://reactjs.org/)
 [![Django](https://img.shields.io/badge/Backend-Django-092E20?style=for-the-badge&logo=django&logoColor=white)](https://www.djangoproject.com/)
-[![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![PyTorch](https://img.shields.io/badge/AI-PyTorch_BERT-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)](https://pytorch.org/)
 [![Groq](https://img.shields.io/badge/AI-Groq_LLM-f55036?style=for-the-badge)](https://groq.com/)
 [![Google Drive](https://img.shields.io/badge/Integration-Google_Drive-34A853?style=for-the-badge&logo=google-drive&logoColor=white)](https://developers.google.com/drive)
 
 <p align="center">
-  <b>Automating Academic Advancement with AI-Powered Document Analysis</b><br>
+  <b>Automating Academic Advancement with Hybrid AI Architecture</b><br>
   <i>Streamlining the NBC 461 evaluation process for State Universities and Colleges.</i>
 </p>
 
@@ -20,30 +20,54 @@
 
 ## 📖 Overview
 
-**DocEval Kapiyu** is a cutting-edge web application engineered to modernize the faculty evaluation and promotion lifecycle. By integrating **Large Language Models (LLMs)** via Groq and **Optical Character Recognition (OCR)**, the system automates the extraction, classification, and scoring of faculty credentials according to the **National Budget Circular (NBC) No. 461** standards.
+**DocEval Kapiyu** is a sophisticated web application engineered to modernize the faculty evaluation and promotion lifecycle. It employs a **Hybrid AI Architecture** combining a fine-tuned **BERT (Bidirectional Encoder Representations from Transformers)** model for high-speed document classification and **Groq LLM** for precise information extraction.
 
-It transforms a tedious manual process into a seamless, data-driven experience, providing real-time analytics on faculty ranking and gap analysis.
+This system automates the end-to-end process: from fetching documents via Google Drive to calculating **NBC 461** points and generating gap analysis reports.
 
 ---
 
 ## 🏗️ System Architecture
 
+The system follows a modular microservices-like architecture within a monolithic Django backend, separating concerns between data ingestion, AI processing, and business logic.
+
 ```mermaid
 graph TD
-    User[Faculty / Admin] -->|Uploads Link| Frontend[React Frontend]
-    Frontend -->|REST API| Backend[Django Backend]
-    
-    subgraph "Processing Engine"
-        Backend -->|Fetch Metadata| GDrive[Google Drive API]
-        Backend -->|Extract Text| OCR[DocTR / OCR]
-        Backend -->|Analyze & Score| LLM[Groq LLM API]
+    subgraph "Client Layer"
+        User[Faculty / Admin] -->|1. Upload GDrive Link| Frontend[React Frontend]
+        Frontend -->|2. Peek Metadata| BackendAPI
     end
-    
-    subgraph "Data & Reporting"
-        Backend -->|Store Data| DB[(PostgreSQL)]
-        Backend -->|Export Results| Sheets[Google Sheets API]
+
+    subgraph "Backend Core (Django)"
+        BackendAPI[REST API] -->|3. Process Request| DocService[Document Service]
+        
+        subgraph "Data Ingestion"
+            DocService -->|4. Fetch File| GDrive[Google Drive API]
+            DocService -->|5. OCR Extraction| DocTR[DocTR / PyTorch]
+        end
+
+        subgraph "AI Processing Pipeline"
+            DocTR -->|6. Raw Text| BERT[TripleBERT Classifier]
+            BERT -->|7. Classify (KRA/Criteria)| Router[Extraction Router]
+            Router -->|8. Contextual Prompt| Groq[Groq LLM API]
+            Groq -->|9. Structured JSON| Scoring[Scoring Engine]
+        end
+
+        subgraph "Business Logic"
+            Scoring -->|10. Apply NBC 461 Rules| DB[(PostgreSQL)]
+            Scoring -->|11. Export Report| Sheets[Google Sheets API]
+        end
     end
 ```
+
+### 🧠 The AI Pipeline Explained
+
+1.  **Ingestion & OCR:** Documents (PDF/Images) are fetched from Google Drive and processed using **DocTR (Deep Learning OCR)** to extract raw text with high fidelity.
+2.  **Classification (BERT):** The raw text is passed to a custom **TripleBERTClassifier** (PyTorch). This hierarchical model simultaneously predicts:
+    *   **KRA:** Key Result Area (e.g., Instruction, Research).
+    *   **Criterion:** Specific category (e.g., Advisership, Publication).
+    *   **Sub-criterion:** Granular detail (e.g., International, National).
+3.  **Extraction (Groq LLM):** Once classified, the system selects a specialized prompt strategy. It sends the text to **Groq** (Llama 3 / Mixtral) to extract specific entities like *Academic Year*, *Degree Program*, *Role*, and *Publication Title*.
+4.  **Scoring (NBC 461):** The extracted data is validated against strict NBC 461 rules (e.g., mapping "BSIT" to "Special Project") to calculate the final CCE points.
 
 ---
 
@@ -51,9 +75,9 @@ graph TD
 
 | Feature | Description |
 | :--- | :--- |
-| **🤖 AI-Powered Extraction** | Automatically extracts semantic data from documents (e.g., Academic Year, Degree, Role) using **Groq LLM**. |
+| **⚡ Hybrid AI Engine** | Uses **BERT** for fast, local classification and **Groq** for intelligent, context-aware data extraction. |
 | **👀 Smart "Peek" Preview** | Instantly validates Google Drive links and previews folder/file names before submission to prevent errors. |
-| **📊 Automated Scoring** | Calculates **CCE (Common Criteria for Evaluation)** points automatically based on strict NBC 461 rules (e.g., BSIT = Special Project). |
+| **📊 Automated Scoring** | Calculates **CCE (Common Criteria for Evaluation)** points automatically based on strict NBC 461 rules. |
 | **☁️ Cloud Integration** | Seamlessly fetches documents from **Google Drive** and exports detailed evaluation reports to **Google Sheets**. |
 | **📈 Gap Analysis** | Visualizes the gap between a faculty's current points and the next rank requirements. |
 | **🔒 Secure Auth** | Role-based access control (Faculty vs. Admin) with email verification and secure session management. |
@@ -75,9 +99,11 @@ graph TD
 <summary><b>Backend (Server Side)</b></summary>
 
 *   **Framework:** Django REST Framework (DRF)
-*   **AI/ML:** Groq API (LLM), PyTorch, DocTR (OCR)
-*   **Database:** PostgreSQL / SQLite (Dev)
-*   **Task Queue:** Celery (Optional for async tasks)
+*   **Deep Learning:** PyTorch, Transformers (Hugging Face)
+*   **Model:** Custom `TripleBERTClassifier` (bert-base-uncased)
+*   **LLM Integration:** Groq API
+*   **OCR:** DocTR (Document Text Recognition)
+*   **Database:** PostgreSQL
 </details>
 
 <details>
@@ -97,6 +123,7 @@ graph TD
 *   Python 3.10+
 *   Google Cloud Service Account (`credentials.json`)
 *   Groq API Key
+*   PyTorch & Transformers
 
 ### 1. Clone the Repository
 ```bash
@@ -150,19 +177,6 @@ GOOGLE_SERVICE_ACCOUNT_FILE=credentials.json
 EMAIL_HOST_USER=your_email@gmail.com
 EMAIL_HOST_PASSWORD=your_app_password
 ```
-
----
-
-## ⚖️ NBC 461 Scoring Logic
-
-The system implements strict scoring rules defined in `backend/api/services/scoring_rules.py`:
-
-*   **KRA I (Instruction):** 
-    *   *Advisership:* BSIT -> Special Project (SP), BSCS -> Undergraduate Thesis (UT).
-*   **KRA II (Research):** 
-    *   Scoring based on role (Author/Co-author) and publication level (International/National).
-*   **KRA III (Extension):** 
-    *   Hours-based calculation for community service.
 
 ---
 
