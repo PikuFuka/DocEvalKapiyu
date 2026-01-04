@@ -37,6 +37,7 @@ const Upload = () => {
     }
 
     try {
+      notify.info('Starting evaluation... Please wait.');
       const promises = nonEmptyLinks.map(link =>
         api.post('/uploads/', { google_drive_link: link.trim() })
       );
