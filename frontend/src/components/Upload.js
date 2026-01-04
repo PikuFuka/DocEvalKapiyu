@@ -5,16 +5,25 @@ import { useNotification } from './Notification';
 
 const Upload = () => {
   const [driveLinks, setDriveLinks] = useState(['']);
+  const [linkPreviews, setLinkPreviews] = useState({}); // Store previews by index
   const [loading, setLoading] = useState(false);
   const { notify } = useNotification();
 
   const addLinkField = () => {
-    setDriveLinks([...driveLinks, '']);
+    if (driveLinks.length < 5) {
+      setDriveLinks([...driveLinks, '']);
+    } else {
+      notify.warning('Maximum of 5 links allowed.');
+    }
   };
 
   const removeLinkField = (index) => {
     if (driveLinks.length > 1) {
       setDriveLinks(driveLinks.filter((_, i) => i !== index));
+      // Clean up preview
+      const newPreviews = { ...linkPreviews };
+      delete newPreviews[index];
+      setLinkPreviews(newPreviews);
     }
   };
 
@@ -22,6 +31,43 @@ const Upload = () => {
     const newLinks = [...driveLinks];
     newLinks[index] = value;
     setDriveLinks(newLinks);
+  };
+
+  const handleBlur = async (index, link) => {
+    if (!link || link.trim() === '') return;
+    
+    setLinkPreviews(prev => ({
+        ...prev,
+        [index]: { name: 'Checking...', status: 'loading' }
+    }));
+    
+    try {
+      const response = await api.post('/uploads/peek/', { link: link.trim() });
+      const { name, mimeType } = response.data;
+      
+      let displayName = name;
+      let icon = 'bi-file-earmark-check';
+      
+      if (mimeType === 'application/vnd.google-apps.folder') {
+          displayName = `Folder: ${name}`;
+          icon = 'bi-folder-fill';
+      } else if (mimeType === 'application/pdf') {
+          icon = 'bi-file-pdf-fill';
+      } else if (mimeType.includes('document')) {
+          icon = 'bi-file-word-fill';
+      }
+      
+      setLinkPreviews(prev => ({
+        ...prev,
+        [index]: { name: displayName, status: 'success', icon: icon }
+      }));
+    } catch (error) {
+      const errorMsg = error.response?.data?.error || 'Invalid Link or Access Denied';
+      setLinkPreviews(prev => ({
+        ...prev,
+        [index]: { name: errorMsg, status: 'error' }
+      }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -46,6 +92,7 @@ const Upload = () => {
 
       notify.success(`Successfully submitted ${nonEmptyLinks.length} document link(s)! They are now being processed.`);
       setDriveLinks(['']);
+      setLinkPreviews({});
     } catch (error) {
       console.error("Upload error:", error);
       const errorMsg =
@@ -60,7 +107,7 @@ const Upload = () => {
   };
 
   return (
-    <div className="upload-page min-vh-100 d-flex align-items-center justify-content-center py-5 position-relative overflow-hidden" style={{ background: '#f8f9fa' }}>
+    <div className="upload-page min-vh-100 d-flex align-items-center justify-content-center py-5 position-relative" style={{ background: '#f8f9fa' }}>
       {/* Background Shapes */}
       <div className="position-absolute top-0 start-0 w-100 h-100 overflow-hidden" style={{ zIndex: 0 }}>
         <div className="position-absolute top-0 end-0 bg-primary opacity-10 rounded-circle blur-3xl" style={{ width: '600px', height: '600px', transform: 'translate(30%, -30%)' }}></div>
@@ -102,35 +149,77 @@ const Upload = () => {
             {driveLinks.map((link, index) => (
               <motion.div
                 key={index}
-                className="d-flex flex-column flex-md-row align-items-stretch gap-2 mb-3"
+                className="mb-3"
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.1 * index }}
               >
-                <div className="input-group shadow-sm rounded-3 overflow-hidden">
-                  <span 
-                    className="input-group-text border-0 bg-light text-muted px-3"
-                  >
-                    <i className="bi bi-link-45deg fs-5"></i>
-                  </span>
-                  <input
-                    type="url"
-                    placeholder="https://drive.google.com/drive/folders/..."
-                    value={link}
-                    onChange={(e) => updateLink(index, e.target.value)}
-                    className="form-control border-0 bg-light py-3"
-                    required={driveLinks.length === 1 && index === 0}
-                  />
+                <div className="d-flex flex-column flex-md-row align-items-stretch gap-2">
+                    <div className="flex-grow-1 position-relative">
+                        <div className="input-group shadow-sm rounded-3 overflow-hidden">
+                            <span className="input-group-text border-0 bg-light text-muted px-3">
+                                <i className="bi bi-link-45deg fs-5"></i>
+                            </span>
+                            
+                            {linkPreviews[index]?.status === 'success' ? (
+                                <div className="form-control border-0 bg-light py-3 d-flex align-items-center justify-content-between">
+                                    <div className="d-flex align-items-center text-success overflow-hidden">
+                                        <i className={`bi ${linkPreviews[index].icon || 'bi-check-circle'} me-2`}></i>
+                                        <span className="fw-medium text-truncate">{linkPreviews[index].name}</span>
+                                    </div>
+                                    <button 
+                                        type="button" 
+                                        className="btn btn-sm btn-link text-muted p-0 ms-2"
+                                        onClick={() => {
+                                            const newPreviews = { ...linkPreviews };
+                                            delete newPreviews[index];
+                                            setLinkPreviews(newPreviews);
+                                        }}
+                                        title="Edit Link"
+                                    >
+                                        <i className="bi bi-pencil-square"></i>
+                                    </button>
+                                </div>
+                            ) : (
+                                <input
+                                    type="url"
+                                    placeholder="https://drive.google.com/drive/folders/..."
+                                    value={link}
+                                    onChange={(e) => updateLink(index, e.target.value)}
+                                    onBlur={(e) => handleBlur(index, e.target.value)}
+                                    className={`form-control border-0 bg-light py-3 ${linkPreviews[index]?.status === 'error' ? 'is-invalid' : ''}`}
+                                    required={driveLinks.length === 1 && index === 0}
+                                    disabled={linkPreviews[index]?.status === 'loading'}
+                                />
+                            )}
+
+                            {linkPreviews[index]?.status === 'loading' && (
+                                <span className="input-group-text border-0 bg-light text-muted px-3">
+                                    <span className="spinner-border spinner-border-sm text-primary"></span>
+                                </span>
+                            )}
+                        </div>
+                        
+                        {/* Error Message Only */}
+                        {linkPreviews[index]?.status === 'error' && (
+                            <div className="mt-1 ms-2">
+                                <small className="fw-bold text-danger">
+                                    <i className="bi bi-exclamation-circle me-1"></i>
+                                    {linkPreviews[index].name}
+                                </small>
+                            </div>
+                        )}
+                    </div>
+                    {driveLinks.length > 1 && (
+                    <button
+                        type="button"
+                        onClick={() => removeLinkField(index)}
+                        className="btn btn-light text-danger border rounded-3 px-3 hover-shadow"
+                    >
+                        <i className="bi bi-trash3-fill"></i>
+                    </button>
+                    )}
                 </div>
-                {driveLinks.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeLinkField(index)}
-                    className="btn btn-light text-danger border rounded-3 px-3 hover-shadow"
-                  >
-                    <i className="bi bi-trash3-fill"></i>
-                  </button>
-                )}
               </motion.div>
             ))}
 
@@ -180,9 +269,15 @@ const Upload = () => {
               </div>
               <div>
                 <h6 className="fw-bold text-dark mb-1">Important Note</h6>
-                <p className="text-muted small mb-0">
+                <p className="text-muted small mb-2">
                   Ensure your Google Drive links are set to <strong>"Anyone with the link"</strong> or shared with the system email to allow the AI to analyze your documents.
                 </p>
+                <div className="d-flex align-items-start gap-2 mt-2 pt-2 border-top border-warning border-opacity-25">
+                  <i className="bi bi-stars text-warning mt-1"></i>
+                  <p className="text-muted small mb-0 fst-italic">
+                    <strong>AI Disclaimer:</strong> Please review the results carefully. While our AI is accurate, it may occasionally make errors.
+                  </p>
+                </div>
               </div>
             </div>
           </motion.div>

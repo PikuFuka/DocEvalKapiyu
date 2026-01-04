@@ -168,6 +168,19 @@ const FacultyDashboard = () => {
           </div>
 
           <div className="card-body p-4">
+            
+            {/* AI Disclaimer */}
+            {uploads.length > 0 && (
+              <div className="alert alert-light border border-light shadow-sm rounded-4 mb-4 d-flex align-items-center gap-3">
+                <div className="bg-primary bg-opacity-10 rounded-circle p-2 d-flex align-items-center justify-content-center" style={{ width: '40px', height: '40px' }}>
+                  <i className="bi bi-robot text-primary"></i>
+                </div>
+                <div className="small text-secondary">
+                  <strong>Note:</strong> Please review all evaluation results carefully. While our system is accurate, AI-generated analysis may occasionally contain errors and should be verified.
+                </div>
+              </div>
+            )}
+
             {filteredUploads.length === 0 && filterStatus !== 'all' ? (
                <div className="text-center py-5">
                  <div className="mx-auto mb-3 d-flex align-items-center justify-content-center bg-light rounded-circle" style={{ width: '60px', height: '60px' }}>
@@ -231,7 +244,9 @@ const FacultyDashboard = () => {
                                                 <div className="rounded-circle bg-primary bg-opacity-10 p-2 text-primary">
                                                     <i className="bi bi-file-earmark-text"></i>
                                                 </div>
-                                                <div className="fw-bold text-dark">{upload.filename || `Document #${upload.id}`}</div>
+                                                <div className="fw-bold text-dark">
+                                                    {upload.source_filename || upload.filename || `Document #${upload.id}`}
+                                                </div>
                                             </div>
                                         </td>
                                         <td className="text-dark small fw-medium">{upload.primary_kra || '-'}</td>
@@ -258,7 +273,11 @@ const FacultyDashboard = () => {
                                         </td>
                                         <td>
                                             {upload.status === 'completed' ? (
-                                                <span className="fw-bold text-dark">{upload.equivalent_percentage || upload.total_score}</span>
+                                                (parseFloat(upload.equivalent_percentage || upload.total_score) === 0) ? (
+                                                    <span className="badge bg-warning text-dark">Need Manual Checking</span>
+                                                ) : (
+                                                    <span className="fw-bold text-dark">{upload.equivalent_percentage || upload.total_score}</span>
+                                                )
                                             ) : (
                                                 <span className="text-secondary">-</span>
                                             )}

@@ -131,7 +131,7 @@ const FacultyRegister = () => {
   };
 
   return (
-    <div className="auth-page min-vh-100 d-flex align-items-center justify-content-center py-5 position-relative overflow-hidden" style={{ background: '#f0f2f5' }}>
+    <div className="auth-page min-vh-100 d-flex align-items-center justify-content-center py-5 position-relative" style={{ background: '#f0f2f5' }}>
       <style>{customStyles}</style>
       
       {/* Enhanced Background Shapes */}

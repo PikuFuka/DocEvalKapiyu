@@ -104,6 +104,36 @@ def send_research_to_sheet(spreadsheet_id, title, research_type, journal, review
 
     return _send_payload(payload, f"KRA 2A ({author_mode})")
 
+def send_adviser_to_sheet(spreadsheet_id, academic_year, level, count, score, drive_link):
+    """
+    Sends KRA 1C Adviser Data.
+    """
+    payload = {
+        "action": "kra1c_adviser",
+        "spreadsheet_id": spreadsheet_id,
+        "academic_year": academic_year,
+        "level": level,
+        "count": count,
+        "score": score,
+        "drive_link": drive_link
+    }
+    return _send_payload(payload, "KRA 1C Adviser")
+
+def send_panel_to_sheet(spreadsheet_id, academic_year, level, count, score, drive_link):
+    """
+    Sends KRA 1C Panel Data.
+    """
+    payload = {
+        "action": "kra1c_panel",
+        "spreadsheet_id": spreadsheet_id,
+        "academic_year": academic_year,
+        "level": level,
+        "count": count,
+        "score": score,
+        "drive_link": drive_link
+    }
+    return _send_payload(payload, "KRA 1C Panel")
+
 def _send_payload(payload, context_name):
     """Internal helper to send POST request."""
     try:

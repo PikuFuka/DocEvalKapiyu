@@ -43,10 +43,17 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       const response = await api.post('/auth/login/', { email, password });
-      const { token, user_id, email: userEmail, is_staff, email_verified } = response.data;
+      const { token, user_id, email: userEmail, first_name, last_name, is_staff, email_verified } = response.data;
 
       localStorage.setItem('token', token);
-      setUser({ id: user_id, email: userEmail, is_staff, email_verified });
+      setUser({ 
+        id: user_id, 
+        email: userEmail, 
+        first_name, 
+        last_name, 
+        is_staff, 
+        email_verified 
+      });
       setIsAuthenticated(true);
 
       return { success: true };
@@ -67,7 +74,7 @@ export const AuthProvider = ({ children }) => {
   const registerFaculty = async (formData) => {
     try {
       const response = await api.post('/auth/faculty-register/', formData);
-      const { user_id, email, message } = response.data;
+      const { message } = response.data;
 
       // Don't auto-login - user needs to verify email
       // The backend sends the verification email

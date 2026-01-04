@@ -13,99 +13,38 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 def extract_kra1a_evaluation(raw_text, debug_dump=False, faculty_name=None):
-    print("INFO: Using existing logic for KRA 1A evaluation extraction.")
-    if not raw_text or not raw_text.strip():
+    print(f"EXTRACTOR: extract_kra1a_evaluation called (via Groq).")
+    
+    prompt = """
+    Analyze the provided Faculty Evaluation document.
+    Extract the following fields:
+    1. "equivalent_percentage": The final equivalent percentage score (e.g., "95.5%", "98%"). Look for "Equivalent Percentage", "Total Score", or the main percentage rating.
+    2. "semester_ay": The semester and academic year (e.g., "1st Semester A.Y. 2023-2024", "2nd Semester 2022-2023").
+    3. "evaluation_type": Determine if it is "Student's Evaluation" or "Supervisor's Evaluation" based on the title or context.
+
+    Output JSON:
+    {
+        "equivalent_percentage": "95.5%",
+        "semester_ay": "1st Semester A.Y. 2023-2024",
+        "evaluation_type": "Student's Evaluation"
+    }
+    """
+    
+    data = query_llm_for_json(prompt, raw_text)
+    
+    if not data:
+        print("Groq failed for KRA 1A. Returning empty list.")
         return []
 
-    norm_text = (
-        raw_text.replace("\u2019", "'")
-        .replace("\u2018", "'")
-        .replace("\u201c", '"')
-        .replace("\u201d", '"')
-        .replace("\u2013", "-")
-        .replace("\u2014", "-")
-        .replace("\u00A0", " ")
-    )
-    norm_text = re.sub(r"[ \t\f\v]+", " ", norm_text)
-    norm_text = re.sub(r"\r", "\n", norm_text)
-
-    percentages = re.findall(r"\b\d{1,3}(?:\.\d+)?%", norm_text)
-
-    eq_match = re.search(
-        r"Equivalent\s*Percentage\s*(?:[:\-–—]?\s*)?(\d{1,3}(?:\.\d+)?%)",
-        norm_text,
-        re.IGNORECASE | re.DOTALL,
-    )
-    equivalent_percentage = (
-        eq_match.group(1) if eq_match else (percentages[0] if percentages else None)
-    )
-
-    semester_ay = None
-    sem_match = re.search(
-        r"\b\d{1,2}(?:st|nd|rd|th)\s+semester\s+(?:A\.Y\.|A\.Y)\s*\d{4}\s*[-–—]\s*\d{4}",
-        norm_text,
-        re.IGNORECASE,
-    )
-    if sem_match:
-        semester_ay = sem_match.group(0).strip()
-    else:
-        sem_match2 = re.search(
-            r"\b(first|second|1st|2nd)\s+semester\s+(?:A\.Y\.|A\.Y)\s*\d{4}\s*[-–—]\s*\d{4}",
-            norm_text,
-            re.IGNORECASE,
-        )
-        if sem_match2:
-            semester_ay = sem_match2.group(0).strip()
-
-    found = []
-    student_patterns = [
-        r"\bstudents?['’]?\s*evaluation\b",
-        r"\bstudent\s+evaluation\b",
-        r"\bevaluation\s+by\s+students?\b",
-        r"\bstudents?\s+evaluation\s+on\b",
-    ]
-    supervisor_patterns = [
-        r"\bsupervisors?['’]?\s*evaluation\b",
-        r"\bsupervisor\s+evaluation\b",
-        r"\bevaluation\s+by\s+supervisors?\b",
-        r"\bsupervisors?\s+evaluation\s+on\b",
-    ]
-
-    def smart_search(patterns, text_to_search):
-        for p in patterns:
-            if re.search(p, text_to_search, re.IGNORECASE):
-                return True
-        for p in patterns:
-            fallback = re.sub(r"\\s\+", r"\\W{0,6}", p)
-            if re.search(fallback, text_to_search, re.IGNORECASE):
-                return True
-        return False
-
-    if smart_search(student_patterns, norm_text):
-        found.append("Student's Evaluation")
-    if smart_search(supervisor_patterns, norm_text):
-        found.append("Supervisor's Evaluation")
-
-    if "student" in raw_text.lower() and "Student's Evaluation" not in found:
-        found.append("Student's Evaluation")
-    if "supervisor" in raw_text.lower() and "Supervisor's Evaluation" not in found:
-        found.append("Supervisor's Evaluation")
-
-    evaluation_type = ", ".join(found) if found else None
-
-    if debug_dump and not found:
-        try:
-            dump_path = f"debug_{uuid.uuid4()}.txt"
-            with open(dump_path, "w", encoding="utf-8") as f:
-                f.write(raw_text)
-            print(f"Wrote debug text dump to {dump_path}")
-        except Exception as e:
-            print(f"Failed to write debug dump: {e}")
-
+    equivalent_percentage = data.get("equivalent_percentage")
+    semester_ay = data.get("semester_ay")
+    evaluation_type = data.get("evaluation_type")
+    
     total_score = None
     if equivalent_percentage:
         try:
-            total_score = float(equivalent_percentage.replace("%", ""))
+            clean_pct = equivalent_percentage.replace("%", "").strip()
+            total_score = float(clean_pct)
         except Exception:
             total_score = None
 
@@ -114,146 +53,114 @@ def extract_kra1a_evaluation(raw_text, debug_dump=False, faculty_name=None):
         "equivalent_percentage": equivalent_percentage,
         "semester_ay": semester_ay,
         "evaluation_type": evaluation_type,
-        "percentages": percentages,
+        "percentages": [equivalent_percentage] if equivalent_percentage else [],
         "raw_text_preview": raw_text[:500] + "..." if len(raw_text) > 500 else raw_text,
         "total_score": total_score,
     }]
 
 def extract_kra1c_adviser(text, faculty_name=None):
-    print(f"EXTRACTOR: extract_kra1c_adviser called for faculty: {faculty_name}")
-    if not faculty_name:
-        print("Warning: Faculty name not provided for adviser extraction.")
+    print(f"EXTRACTOR: extract_kra1c_adviser called for faculty: {faculty_name} (via Groq)")
+    
+    prompt = f"""
+    Analyze the document to determine if "{faculty_name}" served as an ADVISER (Thesis Adviser, Capstone Adviser, etc.).
+    
+    Extract:
+    1. "is_adviser": boolean (True if the faculty is listed as an adviser).
+    2. "academic_year": The academic year (e.g., "2023-2024").
+    3. "level": Determine the level of the project based on the degree/program mentioned.
+       STRICT RULES:
+       - If "Bachelor of Science in Information Technology" (BSIT) -> Return "SP" (Special/Capstone Project).
+       - If "Bachelor of Science in Computer Science" (BSCS) -> Return "UT" (Undergraduate Thesis).
+       - If "Master" or "MA" or "MS" -> Return "MT" (Master's Thesis).
+       - If "Doctor" or "PhD" -> Return "DD" (Doctoral Dissertation).
+       - Otherwise, default to "UT".
+
+    Output JSON:
+    {{
+        "is_adviser": true,
+        "academic_year": "2023-2024",
+        "level": "UT"
+    }}
+    """
+
+    data = query_llm_for_json(prompt, text)
+    
+    if not data or not data.get("is_adviser"):
+        print(f"Groq did not find adviser role for {faculty_name}.")
         return []
 
-    items = []
-    faculty_name_clean = faculty_name.strip()
-    name_parts = faculty_name_clean.split()
-    if len(name_parts) < 2:
-        print(f"Warning: Faculty name '{faculty_name}' seems incomplete.")
-        return []
-    first_name = ' '.join(name_parts[:-1])
-    last_name = name_parts[-1]
-
-    name_variants = _generate_name_variants(first_name, last_name)
-    print(f"DEBUG: Generated name variants for matching: {name_variants}")
-
-
-    sections = _find_section_blocks(text, section_headers=['adviser', 'approved by', 'committee', 'signatures'])
-    print(f"DEBUG: Found sections: {list(sections.keys())}")
-    relevant_text = sections.get('adviser', sections.get('approved by', sections.get('committee', text)))
-    print(f"DEBUG: Using text of length {len(relevant_text)} for adviser search.")
-
-    adviser_role_keywords = [
-        r'adviser', r'advisor', r'co[-\s]?adviser', r'co[-\s]?advisor',
-        r'major[-\s]?adviser', r'major[-\s]?advisor', r'thesis[-\s]?adviser',
-        r'dissertation[-\s]?adviser', r'undergraduate[-\s]?thesis[-\s]?adviser',
-        r'master[\'’]?\s*thesis[-\s]?adviser', r'd\.?i\.?t\.?\s*thesis\s*adviser'
-    ]
-    found_name, context_found = _find_name_near_role(relevant_text, name_variants, adviser_role_keywords)
-
-    if not found_name:
-        print(f"INFO: Faculty name '{faculty_name}' not found near adviser role keywords in the relevant text section.")
-        return [] 
-
-    print(f"SUCCESS: Found faculty name '{found_name}' in adviser context.")
-
-    academic_year = _extract_academic_year(context_found or relevant_text)
-    if not academic_year:
-        academic_year = _extract_academic_year(relevant_text)
-
-    level = _extract_project_level(context_found or relevant_text)
-    if not level:
-        level = _extract_project_level(relevant_text)
-
-    if not academic_year or not level:
-        print(f"WARNING: Could not determine Academic Year or Level from the text for faculty '{faculty_name}'. AY: {academic_year}, Level: {level}")
-        return [] 
-
-   
-    item_count = 1 
+    academic_year = data.get("academic_year", "N/A")
+    level = data.get("level", "UT") # Default to UT if missing
+    
+    # Validate level code
+    valid_levels = ["SP", "CP", "UT", "MT", "DD"]
+    if level not in valid_levels:
+        level = "UT" # Fallback
 
     from .scoring_rules import SCORING_RULES
     base_points_dict = SCORING_RULES.get("kra1c_adviser", {})
-    base_value = base_points_dict.get(level, 0) 
-    total_score = base_value * item_count 
+    base_value = base_points_dict.get(level, 0)
+    item_count = 1
+    total_score = base_value * item_count
 
-    item = {
+    return [{
         "type": "adviser",
         "academic_year": academic_year,
         "level": level,
         "count": item_count,
         "total_score": total_score,
         "title": f"Adviser Service ({level}) {academic_year}",
-        "contribution_percent": 100, 
-        "matched_name": found_name,
-        "context_found_in": context_found[:200] + "..." if context_found and len(context_found) > 200 else context_found
-    }
-    items.append(item)
-    print(f"DEBUG: Successfully extracted adviser item: {item}")
-
-    return items
+        "contribution_percent": 100,
+        "matched_name": faculty_name,
+        "context_found_in": "Extracted via LLM"
+    }]
 
 
 def extract_kra1c_panel(text, faculty_name=None):
+    print(f"EXTRACTOR: extract_kra1c_panel called for faculty: {faculty_name} (via Groq)")
+    
+    prompt = f"""
+    Analyze the document to determine if "{faculty_name}" served as a PANEL MEMBER, EXAMINER, or COMMITTEE MEMBER.
+    
+    Extract:
+    1. "is_panel": boolean (True if the faculty is listed as a panel member/examiner).
+    2. "academic_year": The academic year (e.g., "2023-2024").
+    3. "level": Determine the level of the project based on the degree/program mentioned.
+       STRICT RULES:
+       - If "Bachelor of Science in Information Technology" (BSIT) -> Return "SP" (Special/Capstone Project).
+       - If "Bachelor of Science in Computer Science" (BSCS) -> Return "UT" (Undergraduate Thesis).
+       - If "Master" or "MA" or "MS" -> Return "MT" (Master's Thesis).
+       - If "Doctor" or "PhD" -> Return "DD" (Doctoral Dissertation).
+       - Otherwise, default to "UT".
+
+    Output JSON:
+    {{
+        "is_panel": true,
+        "academic_year": "2023-2024",
+        "level": "UT"
+    }}
     """
-    Extract Panel services from text.
-    Returns a list of items, each representing one unique AY/Level combination found,
-    with the count of instances for that combination and the total score.
-    """
-    print(f"EXTRACTOR: extract_kra1c_panel called for faculty: {faculty_name}")
-    if not faculty_name:
-        print("Warning: Faculty name not provided for panel extraction.")
+
+    data = query_llm_for_json(prompt, text)
+    
+    if not data or not data.get("is_panel"):
+        print(f"Groq did not find panel role for {faculty_name}.")
         return []
 
-    items = []
-    faculty_name_clean = faculty_name.strip()
-    name_parts = faculty_name_clean.split()
-    if len(name_parts) < 2:
-        print(f"Warning: Faculty name '{faculty_name}' seems incomplete.")
-        return []
-    first_name = ' '.join(name_parts[:-1])
-    last_name = name_parts[-1]
-
-    name_variants = _generate_name_variants(first_name, last_name)
-    print(f"DEBUG: Generated name variants for matching: {name_variants}")
-
-    sections = _find_section_blocks(text, section_headers=['panel', 'committee', 'approved by', 'signatures'])
-    print(f"DEBUG: Found sections: {list(sections.keys())}")
-    relevant_text = sections.get('panel', sections.get('committee', sections.get('approved by', text)))
-    print(f"DEBUG: Using text of length {len(relevant_text)} for panel search.")
-
-    panel_role_keywords = [
-        r'panel[-\s]?member', r'panelist', r'member', r'external[-\s]?reader',
-        r'committee', r'oral[-\s]?examination', r'examiner'
-    ]
-    found_name, context_found = _find_name_near_role(relevant_text, name_variants, panel_role_keywords)
-
-    if not found_name:
-        print(f"INFO: Faculty name '{faculty_name}' not found near panel role keywords in the relevant text section.")
-        return []
-
-    print(f"SUCCESS: Found faculty name '{found_name}' in panel context.")
-
-    academic_year = _extract_academic_year(context_found or relevant_text)
-    if not academic_year:
-        academic_year = _extract_academic_year(relevant_text)
-
-    level = _extract_project_level(context_found or relevant_text)
-    if not level:
-        level = _extract_project_level(relevant_text)
-
-    if not academic_year or not level:
-        print(f"WARNING: Could not determine Academic Year or Level from the text for faculty '{faculty_name}'. AY: {academic_year}, Level: {level}")
-        return []
-
-    item_count = 1
+    academic_year = data.get("academic_year", "N/A")
+    level = data.get("level", "UT")
+    
+    valid_levels = ["SP", "CP", "UT", "MT", "DD"]
+    if level not in valid_levels:
+        level = "UT"
 
     from .scoring_rules import SCORING_RULES
     base_points_dict = SCORING_RULES.get("kra1c_panel", {})
     base_value = base_points_dict.get(level, 0)
+    item_count = 1
     total_score = base_value * item_count
 
-    item = {
+    return [{
         "type": "panel",
         "academic_year": academic_year,
         "level": level, 
@@ -261,13 +168,9 @@ def extract_kra1c_panel(text, faculty_name=None):
         "total_score": total_score,
         "title": f"Panel Member Service ({level}) {academic_year}",
         "contribution_percent": 100,
-        "matched_name": found_name,
-        "context_found_in": context_found[:200] + "..." if context_found and len(context_found) > 200 else context_found
-    }
-    items.append(item)
-    print(f"DEBUG: Successfully extracted panel item: {item}")
-
-    return items
+        "matched_name": faculty_name,
+        "context_found_in": "Extracted via LLM"
+    }]
 
 def extract_kra1b_sole(text, faculty_name=None):
     print("INFO: Placeholder for KRA 1B Sole extraction.")
@@ -278,271 +181,64 @@ def extract_kra1b_co(text, faculty_name=None):
     return [{"type": "textbook", "title": "Placeholder Title", "contribution_percent": 50, "calculated_score": 0}]
 
 def extract_kra1b_program_leadAndContri(text, faculty_name=None):
+    print(f"EXTRACTOR: extract_kra1b_program_leadAndContri called for {faculty_name} (via Groq).")
+    
+    prompt = f"""
+    Analyze the Board Resolution or Program Proposal.
+    Target Faculty: "{faculty_name}"
+    
+    Extract:
+    1. "program_name": The name of the program (e.g., "BS Computer Science").
+    2. "program_type": "New Program" or "Revised Program".
+    3. "board_resolution": The Board Resolution number (e.g., "Resolution No. 123 s. 2023").
+    4. "academic_year": The academic year (e.g., "2023-2024").
+    5. "role": Determine the role of "{faculty_name}". Return "Lead" if they are the Head, Chair, Lead Proponent, or Principal Author. Return "Contributor" if they are a member or contributor.
+
+    Output JSON:
+    {{
+        "program_name": "BS Computer Science",
+        "program_type": "Revised Program",
+        "board_resolution": "Resolution No. 123 s. 2023",
+        "academic_year": "2023-2024",
+        "role": "Lead"
+    }}
     """
-    Extracts multiple programs but returns ONLY ONE (the first found).
-    This ensures the output is a single row with a single score.
-    """
-    print(f"EXTRACTOR: extract_kra1b_program_leadAndContri called for {faculty_name}.")
-    
-    results = []
-    # Remove source tags and clean up whitespace
-    clean_text = re.sub(r"<source>.*?<\/source>", "", text, flags=re.DOTALL | re.IGNORECASE)
-    clean_text = re.sub(r'\s+', ' ', clean_text).strip()
-    
-    # --- 1. Common Data Extraction (Board Reso & AY) ---
-    
-    # Board Resolution Pattern
-    reso_match = re.search(r"(?:Board\s+)?Resolution\s+No\.?\s*([\w\d-]+)\s*(?:Series of|s\.)\s*(\d{4})", clean_text, re.IGNORECASE)
-    board_reso = f"Resolution No. {reso_match.group(1)} s. {reso_match.group(2)}" if reso_match else "Pending/Not Found"
 
-    # Academic Year Pattern
-    # Captures only the digits (e.g., "2019-2020") for the dropdown
-    ay_match = re.search(r"(?:A\.?Y\.?|Academic\s+Year)[\s:]*(\d{4}\s*[-–]\s*\d{4})", clean_text, re.IGNORECASE)
-    acad_year = ay_match.group(1).replace("–", "-") if ay_match else "2019-2020"
-
-    # --- 2. Determine Program Type (New vs Revised) ---
+    data = query_llm_for_json(prompt, text)
     
-    # Keywords for "Revised"
-    revised_keywords = [
-        r"revis",        # revised, revision, revising
-        r"enhanc",       # enhanced, enhancement
-        r"amend",        # amended, amendment
-        r"enrich",       # enriched, enrichment
-        r"updat",        # updated, update
-        r"modif",        # modified, modification
-        r"curriculum\s+change"
-    ]
-    revised_pattern = r"(" + "|".join(revised_keywords) + r")"
+    if not data:
+        print("Groq failed for KRA 1B Program. Returning empty list.")
+        return []
 
-    # Keywords for "New"
-    new_keywords = [
-        r"new",
-        r"propos",       # proposal, proposed
-        r"offer",        # offering
-        r"creat",        # creation
-        r"establish",    # establishment
-        r"institut"      # institution of
-    ]
+    # Normalize Academic Year to YYYY-YYYY format
+    raw_ay = data.get("academic_year", "2019-2020")
+    academic_year = "2019-2020" # Default
     
-    if re.search(revised_pattern, clean_text, re.IGNORECASE):
-        program_type = "Revised Program"
-    elif re.search(r"(" + "|".join(new_keywords) + r")", clean_text, re.IGNORECASE):
-        program_type = "New Program"
-    else:
-        program_type = "Revised Program" 
+    try:
+        # Find all 4-digit years
+        years = re.findall(r'\d{4}', str(raw_ay))
+        if len(years) >= 2:
+            # Take the first two found years (e.g., 2023 and 2024 from "2023-2024")
+            academic_year = f"{years[0]}-{years[1]}"
+        elif len(years) == 1:
+            # If only one year found (e.g., "2023"), assume next year is +1
+            y1 = int(years[0])
+            academic_year = f"{y1}-{y1+1}"
+    except Exception as e:
+        print(f"Error normalizing AY: {e}")
+        academic_year = "2019-2020"
 
-    # --- 3. Determine Role (Lead vs Contributor) ---
-    
-    role = "Contributor" # Default
-    
-    if faculty_name:
-        # Keywords for "Lead"
-        lead_keywords = [
-            r"lead",
-            r"head",
-            r"chair",
-            r"manager",      # Project Manager
-            r"proponent",    # Lead Proponent
-            r"principal",    # Principal Author
-            r"author",
-            r"spearh"
-        ]
-        
-        # Check strict proximity: Is the Faculty Name near a "Lead" keyword?
-        if re.search(rf"{re.escape(faculty_name)}.*contributed", clean_text, re.IGNORECASE) or \
-           re.search(rf"contributed.*{re.escape(faculty_name)}", clean_text, re.IGNORECASE):
-            role = "Contributor"
-        
-        elif re.search(r"(" + "|".join(lead_keywords) + r")", clean_text, re.IGNORECASE):
-            if re.search(rf"(?:Lead|Head|Chair|Manager|Proponent).*?{re.escape(faculty_name)}", clean_text, re.IGNORECASE):
-                role = "Lead"
-            elif re.search(rf"{re.escape(faculty_name)}.*?(?:Lead|Head|Chair|Manager|Proponent)", clean_text, re.IGNORECASE):
-                role = "Lead"
-            else:
-                role = "Contributor"
-    
-    degree_pattern = r"(?:1\.|2\.|3\.|•)?\s*((?:Bachelor|Master|Doctor)\s+of\s+[\w\s]+(?:Major\s+in\s+[\w\s]+)?)"
-    degree_matches = re.findall(degree_pattern, clean_text, re.IGNORECASE)
-
-    programs = []
-    for d in degree_matches:
-        clean_name = re.sub(r'\s+', ' ', d).strip()
-        if len(clean_name) > 10: 
-            programs.append(clean_name)
-    
-    programs = sorted(list(set(programs))) # Remove duplicates
-
-    if not programs:
-        programs = ["Program Name Not Detected"]
-    
-    # --- LIMIT TO 1 PROGRAM ---
-    # This logic takes the first sorted program and ignores the rest.
-    programs = programs[:1]
-
-    # --- 5. Build Result List ---
-    for prog in programs:
-        results.append({
-            "program_name": prog.upper(),
-            "program_type": program_type,
-            "board_resolution": board_reso,
-            "academic_year": acad_year,
-            "role": role 
-        })
-
-    print(f"DEBUG: extract_kra1b_program_leadAndContri results: {results}")
-    return results
+    return [{
+        "program_name": data.get("program_name", "Unknown Program").upper(),
+        "program_type": data.get("program_type", "Revised Program"),
+        "board_resolution": data.get("board_resolution", "Pending"),
+        "academic_year": academic_year,
+        "role": data.get("role", "Contributor") 
+    }]
 
 # =========================================================
 # KRA 2A: RESEARCH OUTPUTS (Sole & Co-Author)
 # =========================================================
-"""
-def extract_kra2a_sole(text, faculty_name=None):
-    print(f"EXTRACTOR: extract_kra2a_sole called.")
-    return _extract_research_common(text, faculty_name, is_sole=True)
-
-def extract_kra2a_co(text, faculty_name=None):
-    print(f"EXTRACTOR: extract_kra2a_co called for {faculty_name}.")
-    return _extract_research_common(text, faculty_name, is_sole=False)
-
-def _extract_research_common(text, faculty_name, is_sole=True):
-    results = []
-    # Clean text
-    clean_text = re.sub(r'\\', '', text).strip()
-    clean_text = re.sub(r'\s+', ' ', clean_text)
-    
-    # --- STRATEGY A: IS THIS A CERTIFICATION? ---
-    # Certifications usually follow a strict sentence structure.
-    is_cert = "certify" in clean_text.lower() or "certification" in clean_text.lower()
-    
-    title = "Research Title Detected"
-    journal = "N/A"
-    
-    if is_cert:
-        print("DEBUG: Using Certification Extraction Logic")
-        # Pattern: "certify that the research entitled [TITLE] authored by..."
-        title_match = re.search(r"entitled\s+[:\"]?([^\"\.]{5,200})[:\"\.?]", clean_text, re.IGNORECASE)
-        if title_match:
-            title = title_match.group(1).strip()
-        
-        # Pattern: "published in [JOURNAL] on..."
-        journal_match = re.search(r"published\s+in\s+the\s+([^\.]+?)\s+(?:on|dated)", clean_text, re.IGNORECASE)
-        if journal_match:
-            journal = journal_match.group(1).strip()
-            
-    else:
-        print("DEBUG: Using Research Paper Header Logic")
-        # --- STRATEGY B: IS THIS THE PAPER HEADER? ---
-        
-        # 1. TITLE
-        # Look for explicit label or the first long bold-like string (heuristically)
-        explicit_title = re.search(r"(?:Title|Entitled)\s*[:\-\.]\s*([^\n\r]+)", clean_text, re.IGNORECASE)
-        if explicit_title:
-            title = explicit_title.group(1).strip()
-        else:
-            # Fallback: Assume the title is before the word "Abstract"
-            pre_abstract = re.split(r"Abstract", clean_text, flags=re.IGNORECASE)[0]
-            # Take the longest line in the pre-abstract text
-            lines = [l.strip() for l in pre_abstract.split('.') if len(l) > 10]
-            # Filter out author names or affiliations usually short or containing "University"
-            valid_lines = [l for l in lines if "university" not in l.lower() and "college" not in l.lower() and len(l) > 20]
-            if valid_lines:
-                title = valid_lines[0]
-
-        # 2. JOURNAL
-        # Look for common header formats
-        j_match = re.search(r"([A-Za-z\s]*Journal\s+of\s+[A-Za-z\s\-]*)", clean_text, re.IGNORECASE)
-        if j_match:
-            journal = j_match.group(1).strip()
-        else:
-            # Look for "Vol. X, No. Y" context
-            vol_context = re.search(r"([A-Za-z\s]+)\s+Vol\.?\s?\d", clean_text, re.IGNORECASE)
-            if vol_context:
-                journal = vol_context.group(1).strip()
-
-    # --- 3. DATE PUBLISHED (Common to both) ---
-    date_published = "N/A"
-    
-    # Priority 1: Explicit Label
-    explicit_date = re.search(r"(?:Date\s+Published|Published\s+on|Date)\s*[:\-]\s*([A-Za-z0-9,\s]+)", clean_text, re.IGNORECASE)
-    
-    # Priority 2: Pattern Matching
-    # Matches: "January 1, 2023", "Jan 2023", "01/01/2023", "2023-01-01"
-    date_patterns = [
-        r"(\w+\s+\d{1,2},?\s+\d{4})", # Month DD, YYYY
-        r"(\w+\s+\d{4})",             # Month YYYY
-        r"(\d{2}[/\-]\d{2}[/\-]\d{4})" # MM/DD/YYYY
-    ]
-    
-    raw_date = None
-    if explicit_date:
-        raw_date = explicit_date.group(1)
-    else:
-        for pat in date_patterns:
-            # We search specifically near "Published" keywords if possible to avoid random dates
-            match = re.search(pat, clean_text, re.IGNORECASE)
-            if match:
-                raw_date = match.group(0).strip()
-                break
-    
-    # Convert to MM/DD/YYYY format
-    if raw_date:
-        try:
-            # Try parsing various formats
-            for fmt in ["%B %d, %Y", "%B %Y", "%m/%d/%Y", "%Y-%m-%d"]:
-                try:
-                    dt = datetime.strptime(raw_date, fmt)
-                    date_published = dt.strftime("%m/%d/%Y")
-                    break
-                except ValueError:
-                    continue
-            if date_published == "N/A": date_published = raw_date # Keep raw if parse fails
-        except:
-            date_published = raw_date
-
-    # --- 4. INDEXING BODY ---
-    indexing = "N/A"
-    index_keywords = ["Scopus", "Web of Science", "Clarivate", "ASEAN Citation Index", "ACI", "CHED Recognized"]
-    found_indices = [k for k in index_keywords if k.lower() in clean_text.lower()]
-    if found_indices:
-        indexing = ", ".join(found_indices)
-
-    # --- 5. CONTRIBUTION % ---
-    contribution = 100 if is_sole else 0
-    
-    if not is_sole and faculty_name:
-        # Normalize name for search (Use Last Name)
-        parts = faculty_name.split()
-        lname = parts[-1] if parts else faculty_name
-        
-        # Pattern A: Tabular/List format "Name ..... 50%"
-        # Matches: "Villarica ... 50%" or "Villarica - 50%" or "Villarica 50"
-        pct_match = re.search(rf"{re.escape(lname)}[^\d\n]*?(\d{{1,3}})\s*%", clean_text, re.IGNORECASE)
-        
-        # Pattern B: Explicit Label "Contribution: 50%"
-        generic_pct = re.search(r"(?:Contribution|Share)\s*[:\-]\s*(\d{1,3})%", clean_text, re.IGNORECASE)
-
-        if pct_match:
-            contribution = int(pct_match.group(1))
-        elif generic_pct:
-            contribution = int(generic_pct.group(1))
-
-    # --- 6. TYPE HINTING ---
-    res_type_hint = "Journal Article"
-    if "book" in clean_text.lower() and "chapter" not in clean_text.lower(): res_type_hint = "Book"
-    elif "chapter" in clean_text.lower(): res_type_hint = "Book Chapter"
-    elif "monograph" in clean_text.lower(): res_type_hint = "Monograph"
-
-    results.append({
-        "title": title.strip("."),
-        "type_hint": res_type_hint,
-        "journal": journal.strip("."),
-        "indexing": indexing,
-        "date_published": date_published,
-        "contribution": contribution
-    })
-    print(f"DEBUG: Extracted research item: {results[-1]}")
-    return results
-"""
 
 def query_llm_for_json(prompt, text):
     """
@@ -552,8 +248,6 @@ def query_llm_for_json(prompt, text):
         logger.error("GROQ_API_KEY is missing.")
         return None
 
-    # 1. PREVENT BURSTS (Crucial for Free Tier)
-    # The free tier allows ~20 requests/min. A 3-second pause limits you to 20/min max.
     time.sleep(3) 
 
     client = Groq(api_key=settings.GROQ_API_KEY)
@@ -594,6 +288,9 @@ def query_llm_for_json(prompt, text):
                 wait_time = (attempt + 1) * 10 + random.uniform(1, 3) # Wait 10s, 20s, 30s
                 print(f"WARNING: Groq Rate Limit Hit. Cooling down for {wait_time:.1f}s...")
                 time.sleep(wait_time)
+            elif "401" in error_str or "invalid api key" in error_str:
+                print(f"CRITICAL ERROR: Invalid Groq API Key. Please check your .env file.")
+                return None
             else:
                 logger.error(f"Groq Error: {e}")
                 return None # Fatal error, stop trying

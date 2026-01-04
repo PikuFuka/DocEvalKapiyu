@@ -10,7 +10,6 @@ const Login = () => {
     password: ''
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -39,12 +38,10 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
 
     const result = await login(formData.email, formData.password);
 
     if (!result.success) {
-      setError(result.error);
       notify.error(result.error);
     } else {
       notify.success('Welcome back!');
@@ -55,7 +52,7 @@ const Login = () => {
   };
 
   return (
-    <div className="auth-page min-vh-100 d-flex align-items-center justify-content-center py-5 position-relative overflow-hidden" style={{ background: '#f8f9fa' }}>
+    <div className="auth-page min-vh-100 d-flex align-items-center justify-content-center py-5 position-relative" style={{ background: '#f8f9fa' }}>
       {/* Background Shapes */}
       <div className="position-absolute top-0 start-0 w-100 h-100 overflow-hidden" style={{ zIndex: 0 }}>
         <div className="position-absolute top-0 end-0 bg-primary opacity-10 rounded-circle blur-3xl" style={{ width: '600px', height: '600px', transform: 'translate(30%, -30%)' }}></div>

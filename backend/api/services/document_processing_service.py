@@ -1,22 +1,47 @@
 import os
 import uuid
 import io
-import pytesseract
 import logging
 import json
-import fitz  # PyMuPDF
+import re
 from datetime import datetime
 from PIL import Image, ImageFilter, ImageOps
 from django.conf import settings
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 from google.oauth2 import service_account  
 from googleapiclient.http import MediaIoBaseDownload
 
 from docx import Document
 from .ml_processing_service import classify_document
-from .google_sheets_service import send_evaluation_to_spreadsheetKRA1_Eval, normalize_values, send_research_to_sheet, send_program_contribution_to_sheet
+from .google_sheets_service import (
+    send_evaluation_to_spreadsheetKRA1_Eval, 
+    normalize_values, 
+    send_research_to_sheet, 
+    send_program_contribution_to_sheet,
+    send_adviser_to_sheet,
+    send_panel_to_sheet
+)
 from .extraction_strategies import route_extraction
 from .scoring_rules import calculate_score, SCORING_RULES
+
+# --- DocTR & Conversion Imports ---
+try:
+    from docx2pdf import convert as docx_convert
+    from doctr.io import DocumentFile
+    from doctr.models import ocr_predictor
+    
+    print("Initializing DocTR Model (this may take a moment)...")
+    # Preload the model (using PyTorch backend by default if installed)
+    DOCTR_MODEL = ocr_predictor(pretrained=True)
+    print("DocTR Model Initialized.")
+except ImportError:
+    print("CRITICAL: DocTR or docx2pdf not installed. Please run: pip install python-doctr[torch] docx2pdf")
+    DOCTR_MODEL = None
+except Exception as e:
+    print(f"Error initializing DocTR: {e}")
+    DOCTR_MODEL = None
+# ----------------------------------
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +61,58 @@ def get_drive_service():
         return build('drive', 'v3', credentials=creds)
     except Exception as e:
         logger.error(f"Failed to authenticate with Service Account: {e}")
+        raise e
+
+def get_drive_file_name(drive_link):
+    """
+    Lightweight function to just get the file/folder name from a Drive Link.
+    Returns a dict with metadata or raises an exception.
+    """
+    try:
+        # Robust ID extraction using regex
+        patterns = [
+            r'/folders/([a-zA-Z0-9_-]+)',
+            r'/d/([a-zA-Z0-9_-]+)',
+            r'/file/d/([a-zA-Z0-9_-]+)',
+            r'id=([a-zA-Z0-9_-]+)'
+        ]
+        
+        file_id = None
+        for pattern in patterns:
+            match = re.search(pattern, drive_link)
+            if match:
+                file_id = match.group(1)
+                break
+        
+        if not file_id:
+            # Fallback for simple ID strings if user pasted just the ID
+            if re.match(r'^[a-zA-Z0-9_-]+$', drive_link):
+                file_id = drive_link
+            else:
+                raise ValueError("Invalid Google Drive link format")
+
+        service = get_drive_service()
+        try:
+            # supportsAllDrives=True is important for shared drives
+            file_metadata = service.files().get(
+                fileId=file_id, 
+                fields="name, mimeType, webViewLink",
+                supportsAllDrives=True
+            ).execute()
+        except HttpError as e:
+            if e.resp.status == 404:
+                raise ValueError("File not found or access denied. Please ensure the link is 'Anyone with the link' or shared with the system email.")
+            raise e
+        
+        return {
+            'name': file_metadata.get('name', 'Unknown'),
+            'mimeType': file_metadata.get('mimeType', ''),
+            'webViewLink': file_metadata.get('webViewLink', ''),
+            'id': file_id
+        }
+
+    except Exception as e:
+        logger.error(f"Error peeking drive link: {e}")
         raise e
 
 def extract_text_from_drive(drive_link):
@@ -119,21 +196,20 @@ def extract_text_from_drive_file(file_id):
                 # Optional: print(f"Download {int(status.progress() * 100)}%.")
         # ------------------------------
 
-        # Extract text and page count based on file type
+        # Extract text and page count using DocTR
         text = ""
         page_count = 0
         
         try:
-            if mime_type == 'application/pdf':
-                text, page_count = extract_text_from_pdf_with_ocr(temp_path)
-            elif mime_type == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
-                text = extract_text_from_word(temp_path)
-                page_count = 0
-            elif mime_type.startswith('image/'):
-                text = extract_text_from_image(temp_path)
-                page_count = 1
-            else:
-                text, page_count = "", 0
+            # Unified extraction using DocTR
+            text, page_count = extract_text_with_doctr(temp_path, mime_type)
+            
+            # Fallback for Word if DocTR failed (e.g. conversion issue)
+            if not text and mime_type == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+                 print("DocTR failed for Word. Falling back to python-docx.")
+                 text = extract_text_from_word(temp_path)
+                 page_count = 1 
+
         except Exception as extract_error:
             print(f"Error during text extraction: {extract_error}")
             text, page_count = "", 0
@@ -203,73 +279,71 @@ def extract_files_from_drive_folder(folder_id):
         return []
 
 
-def preprocess_for_ocr(img: Image.Image) -> Image.Image:
-    """Preprocess image for better OCR results."""
-    try:
-        gray = img.convert("L")
-        gray = ImageOps.autocontrast(gray)
-        gray = gray.filter(ImageFilter.MedianFilter(size=3))
-        threshold = gray.point(lambda x: 0 if x < 160 else 255, "1")
-        return threshold
-    except Exception as e:
-        print(f"Preprocessing error: {e}, using original image")
-        return img
-
-
-def extract_text_from_pdf_with_ocr(file_path):
+def extract_text_with_doctr(file_path, mime_type):
     """
-    Extract text from PDF. Returns tuple (text, page_count).
+    Unified text extraction using DocTR (Deep Learning OCR).
+    Handles Images, PDFs, and Word Docs (via conversion).
     """
+    if not DOCTR_MODEL:
+        print("DocTR model not available. Returning empty.")
+        return "", 0
+
+    doc = None
+    temp_pdf_path = None
+    
     try:
-        doc = fitz.open(file_path)
-        text = ""
+        # 1. Handle Images
+        if mime_type.startswith('image/'):
+            doc = DocumentFile.from_images(file_path)
+            
+        # 2. Handle PDFs
+        elif mime_type == 'application/pdf':
+            doc = DocumentFile.from_pdf(file_path)
+            
+        # 3. Handle Word Docs (Convert to PDF first)
+        elif mime_type == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+            temp_pdf_path = file_path.replace(".docx", "_temp.pdf")
+            print(f"Converting Word to PDF for DocTR: {temp_pdf_path}")
+            try:
+                docx_convert(file_path, temp_pdf_path)
+                doc = DocumentFile.from_pdf(temp_pdf_path)
+            except Exception as conv_err:
+                print(f"Word conversion failed: {conv_err}")
+                return "", 0
+            
+        else:
+            print(f"DocTR: Unsupported mime type {mime_type}")
+            return "", 0
+
+        # Run OCR
+        print(f"Running DocTR on {file_path}...")
+        result = DOCTR_MODEL(doc)
         
-        for page in doc:
-            text += page.get_text()
-
-        page_count = doc.page_count
-        doc.close()
-
-        # If no selectable text, use OCR
-        if not text.strip():
-            print("No text found. Using OCR...")
-            text = extract_text_with_ocr(file_path)
-
-        return text, page_count
+        # Reconstruct text
+        full_text = ""
+        page_count = len(result.pages)
+        
+        for page in result.pages:
+            for block in page.blocks:
+                for line in block.lines:
+                    for word in line.words:
+                        full_text += word.value + " "
+                    full_text += "\n"
+        
+        print("DocTR Extraction Complete.")
+        return full_text, page_count
 
     except Exception as e:
-        print(f"PDF extraction error: {e}")
+        print(f"DocTR extraction error: {e}")
         import traceback
         traceback.print_exc()
         return "", 0
-
-
-def extract_text_with_ocr(file_path):
-    """Extract text from PDF using OCR. Returns string."""
-    text = ""
-    
-    try:
-        doc = fitz.open(file_path)
-        
-        for page in doc:
-            pix = page.get_pixmap(dpi=200)
-            img_bytes = pix.tobytes("png")
-            img = Image.open(io.BytesIO(img_bytes))
-            
-            # Preprocess for better OCR
-            processed = preprocess_for_ocr(img)
-            page_text = pytesseract.image_to_string(processed, lang="eng")
-            text += page_text + "\n"
-        
-        doc.close()
-        
-    except Exception as e:
-        print(f"OCR error: {e}")
-        import traceback
-        traceback.print_exc()
-    
-    return text
-
+    finally:
+        if temp_pdf_path and os.path.exists(temp_pdf_path):
+            try:
+                os.remove(temp_pdf_path)
+            except:
+                pass
 
 def extract_text_from_word(file_path):
     """Extract text from Word document. Returns string."""
@@ -278,24 +352,6 @@ def extract_text_from_word(file_path):
         return "\n".join([p.text for p in doc.paragraphs])
     except Exception as e:
         print(f"Error reading .docx file: {e}")
-        import traceback
-        traceback.print_exc()
-        return ""
-
-
-def extract_text_from_image(file_path):
-    """Extract text from image file using OCR. Returns string."""
-    try:
-        img = Image.open(file_path)
-        
-        # Preprocess for better OCR
-        processed = preprocess_for_ocr(img)
-        text = pytesseract.image_to_string(processed, lang="eng")
-        
-        return text
-        
-    except Exception as e:
-        print(f"Error processing image file {file_path}: {e}")
         import traceback
         traceback.print_exc()
         return ""
@@ -599,6 +655,28 @@ PROCESSING_STRATEGIES = {
     # Add other specific types as they are implemented
 }
 
+def normalize_ay_for_sheet(raw_ay):
+    """
+    Normalizes Academic Year to match Google Sheets columns (2019-2020 to 2022-2023).
+    Maps out-of-range years to the nearest valid boundary.
+    """
+    try:
+        import re
+        # Find all 4-digit years
+        years = re.findall(r'\d{4}', str(raw_ay))
+        if not years:
+            return "2022-2023" # Default to latest if unknown
+
+        y1 = int(years[0])
+        
+        # Define valid start years based on sheet columns (2019, 2020, 2021, 2022)
+        if y1 < 2019: y1 = 2019
+        if y1 > 2022: y1 = 2022
+        
+        return f"{y1}-{y1+1}"
+    except Exception:
+        return "2022-2023"
+
 def process_document_upload(upload):
     try:
         file_info_list = extract_text_from_drive(upload.google_drive_link)
@@ -651,16 +729,24 @@ def process_document_upload(upload):
             priority_file = file_info_list[0]
             print(f"-> No specific priority detected. Using first file as anchor: {priority_file['file_name']}")
 
+        # --- UPDATE UPLOAD FILENAME ---
+        # If it's a folder, we want the folder name, but we only have file names here.
+        # We can try to infer it or just use the first file name.
+        # Ideally, extract_text_from_drive should return the folder name too.
+        # For now, let's use the first file's name or a generic name if multiple.
+        
+        final_display_name = priority_file['file_name']
+        if len(file_info_list) > 1:
+             # Try to find a common prefix or just say "Folder containing..."
+             final_display_name = f"{priority_file['file_name']} (and {len(file_info_list)-1} others)"
+        
+        # Update the upload record with the display name
+        upload.source_filename = final_display_name
+        upload.save(update_fields=['source_filename'])
+        # ------------------------------
+
         print(f"\n--- CLASSIFYING SINGLE FILE: {priority_file['file_name']} ---")
         classification_result = classify_document(priority_file['text'])
-        
-        if classification_result.get('primary_kra') == "1":
-            p_text = priority_file['text'].lower()
-            if "degree" in p_text or "program" in p_text or "curriculum" in p_text:
-                if classification_result.get('sub_criterion') != "2.1":
-                    print("-> Correction: Detected 'Program/Degree' keywords. Forcing Evidence Type to Program.")
-                    classification_result['criterion'] = "B"
-                    classification_result['sub_criterion'] = "2.1"
 
         evidence_type = map_classification_to_evidence_type(classification_result)
         print(f"Determined Evidence Type: {evidence_type}")
@@ -682,10 +768,35 @@ def process_document_upload(upload):
 
         if evidence_type:
             try:
-                raw_items = route_extraction(evidence_type, combined_text, faculty_name=faculty_full_name)
-                
-                processor = PROCESSING_STRATEGIES.get(evidence_type, _process_fallback)
-                extracted_data = processor(combined_text, classification_result, upload, raw_items)
+                # Special handling for Multi-File Evidence (Adviser/Panel)
+                if evidence_type in ["kra1c_adviser", "kra1c_panel"]:
+                    print(f"--- Processing Multi-File Evidence for {evidence_type} ---")
+                    cumulative_score = 0.0
+                    
+                    # Iterate through ALL files in the folder
+                    for f in file_info_list:
+                        print(f"Processing individual file: {f['file_name']}")
+                        # Extract from single file text
+                        file_items = route_extraction(evidence_type, f['text'], faculty_name=faculty_full_name)
+                        
+                        if file_items:
+                            for item in file_items:
+                                # Accumulate score
+                                item_score = item.get("total_score", 0)
+                                cumulative_score += item_score
+                                extracted_data.append(item)
+                    
+                    upload.total_score = cumulative_score
+                    print(f"Multi-file processing complete. Total items: {len(extracted_data)}, Total Score: {cumulative_score}")
+
+                else:
+                    raw_items = route_extraction(evidence_type, combined_text, faculty_name=faculty_full_name)
+                    
+                    processor = PROCESSING_STRATEGIES.get(evidence_type, _process_fallback)
+                    result = processor(combined_text, classification_result, upload, raw_items)
+                    if result is not None:
+                        extracted_data = result
+
             except Exception as e:
                 print(f"Extraction error: {e}")
                 import traceback
@@ -831,6 +942,72 @@ def process_document_upload(upload):
                                     author_mode=mode,
                                     contribution=raw.get('contribution', 0)
                                 )
+
+                        elif evidence_type == "kra1c_adviser" and extracted_data:
+                            print(f"-> Sending KRA 1C Adviser to Sheets ({len(extracted_data)} items)...")
+                            
+                            # 1. Gather all candidates
+                            ays = []
+                            levels = []
+                            total_count = 0
+                            total_score = 0.0
+                            
+                            for item in extracted_data:
+                                raw_ay = item.get('academic_year', 'N/A')
+                                ays.append(normalize_ay_for_sheet(raw_ay))
+                                levels.append(item.get('level', 'UT'))
+                                total_count += item.get('count', 1)
+                                total_score += item.get('total_score', 0)
+                            
+                            # 2. Determine Majority (Mode)
+                            from collections import Counter
+                            final_ay = Counter(ays).most_common(1)[0][0] if ays else "2022-2023"
+                            final_level = Counter(levels).most_common(1)[0][0] if levels else "UT"
+                            
+                            print(f"   -> Consolidated Batch: {final_ay} - {final_level} (Total: {total_count})")
+                            
+                            # 3. Send Single Consolidated Request
+                            send_adviser_to_sheet(
+                                spreadsheet_id=spreadsheet_id,
+                                academic_year=final_ay,
+                                level=final_level,
+                                count=total_count,
+                                score=total_score,
+                                drive_link=folder_link
+                            )
+
+                        elif evidence_type == "kra1c_panel" and extracted_data:
+                            print(f"-> Sending KRA 1C Panel to Sheets ({len(extracted_data)} items)...")
+                            
+                            # 1. Gather all candidates
+                            ays = []
+                            levels = []
+                            total_count = 0
+                            total_score = 0.0
+                            
+                            for item in extracted_data:
+                                raw_ay = item.get('academic_year', 'N/A')
+                                ays.append(normalize_ay_for_sheet(raw_ay))
+                                levels.append(item.get('level', 'UT'))
+                                total_count += item.get('count', 1)
+                                total_score += item.get('total_score', 0)
+                            
+                            # 2. Determine Majority (Mode)
+                            from collections import Counter
+                            final_ay = Counter(ays).most_common(1)[0][0] if ays else "2022-2023"
+                            final_level = Counter(levels).most_common(1)[0][0] if levels else "UT"
+                            
+                            print(f"   -> Consolidated Batch: {final_ay} - {final_level} (Total: {total_count})")
+                            
+                            # 3. Send Single Consolidated Request
+                            send_panel_to_sheet(
+                                spreadsheet_id=spreadsheet_id,
+                                academic_year=final_ay,
+                                level=final_level,
+                                count=total_count,
+                                score=total_score,
+                                drive_link=folder_link
+                            )
 
                     except Exception as sheet_error:
                         print(f"Error sending to Google Sheets: {sheet_error}")

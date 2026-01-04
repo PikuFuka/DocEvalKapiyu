@@ -8,7 +8,8 @@ from .auth_views import (
 )
 from .upload_views import (
     DocumentUploadView,
-    user_uploads_list
+    user_uploads_list,
+    peek_drive_link
 )
 from .admin_views import (
     admin_dashboard_stats,

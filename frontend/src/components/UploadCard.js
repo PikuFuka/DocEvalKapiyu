@@ -64,12 +64,15 @@ export const UploadCard = ({ upload }) => {
             <i className="bi bi-calendar3 me-1"></i>
             {new Date(upload.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
           </span>
+          <span className="ms-2 fw-bold text-dark">
+             {upload.source_filename || `Document #${upload.id}`}
+          </span>
         </div>
         
         <div className="header-right">
           {upload.status === 'completed' && upload.success && (
-            <div className="score-pill" style={{ backgroundColor: getScoreColor(score), color: 'white' }}>
-              {upload.equivalent_percentage || `${score}pts`}
+            <div className="score-pill" style={{ backgroundColor: score === 0 ? 'var(--warning-color)' : getScoreColor(score), color: score === 0 ? '#000' : 'white' }}>
+              {score === 0 ? 'Need Manual Checking' : (upload.equivalent_percentage || `${score}pts`)}
             </div>
           )}
           <span className={`status-dot ${statusInfo.className}`} title={statusInfo.text}></span>

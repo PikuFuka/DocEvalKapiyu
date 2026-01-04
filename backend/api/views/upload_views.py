@@ -9,7 +9,7 @@ from ..serializers import (
     DocumentUploadSerializer,
     UserSerializer
 )
-from ..services.document_processing_service import process_document_upload
+from ..services.document_processing_service import process_document_upload, get_drive_file_name
 
 class DocumentUploadView(generics.ListCreateAPIView):
     serializer_class = DocumentUploadSerializer
@@ -25,6 +25,25 @@ class DocumentUploadView(generics.ListCreateAPIView):
             process_document_upload(upload)
         except Exception as e:
             print(f"Error processing upload {upload.id}: {e}")
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def peek_drive_link(request):
+    """
+    Endpoint to preview a Google Drive link's name before uploading.
+    """
+    link = request.data.get('link')
+    if not link:
+        return Response({'error': 'No link provided'}, status=400)
+    
+    try:
+        metadata = get_drive_file_name(link)
+        return Response(metadata)
+    except ValueError as e:
+        return Response({'error': str(e)}, status=400)
+    except Exception as e:
+        print(f"Peek error: {e}")
+        return Response({'error': 'Could not access link. Check permissions.'}, status=400)
 
 
 @api_view(['GET'])
