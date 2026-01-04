@@ -1,95 +1,177 @@
-# DocEvalKapiyu: Automated Faculty Evaluation & Promotion System
+<div align="center">
 
-DocEvalKapiyu is a sophisticated web application designed to automate the faculty evaluation and promotion process based on the **NBC 461 (National Budget Circular No. 461)** standards. It leverages Machine Learning (BERT) to classify documents and an automated analysis engine to project faculty rank promotions.
+# 🎓 DocEval Kapiyu
+### Intelligent Faculty Evaluation & Promotion System (NBC 461)
 
-## 🚀 Features
+[![React](https://img.shields.io/badge/Frontend-React-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://reactjs.org/)
+[![Django](https://img.shields.io/badge/Backend-Django-092E20?style=for-the-badge&logo=django&logoColor=white)](https://www.djangoproject.com/)
+[![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
+[![Groq](https://img.shields.io/badge/AI-Groq_LLM-f55036?style=for-the-badge)](https://groq.com/)
+[![Google Drive](https://img.shields.io/badge/Integration-Google_Drive-34A853?style=for-the-badge&logo=google-drive&logoColor=white)](https://developers.google.com/drive)
 
-### For Faculty
-- **Secure Authentication:** Register and login with email verification.
-- **Document Upload:** Submit evidence documents via Google Drive links.
-- **Automated Classification:** AI-powered classification of documents into KRAs (Key Result Areas), Criteria, and Sub-criteria.
-- **Promotion Tracker:** Real-time projection of rank increments based on current scores and NBC 461 weights.
-- **Analytics Dashboard:** Visualize evaluation progress and score distributions.
+<p align="center">
+  <b>Automating Academic Advancement with AI-Powered Document Analysis</b><br>
+  <i>Streamlining the NBC 461 evaluation process for State Universities and Colleges.</i>
+</p>
 
-### For Admins
-- **Centralized Management:** Oversee all faculty uploads and evaluation statuses.
-- **System Monitoring:** Track processing queues and system health.
+</div>
+
+---
+
+## 📖 Overview
+
+**DocEval Kapiyu** is a cutting-edge web application engineered to modernize the faculty evaluation and promotion lifecycle. By integrating **Large Language Models (LLMs)** via Groq and **Optical Character Recognition (OCR)**, the system automates the extraction, classification, and scoring of faculty credentials according to the **National Budget Circular (NBC) No. 461** standards.
+
+It transforms a tedious manual process into a seamless, data-driven experience, providing real-time analytics on faculty ranking and gap analysis.
+
+---
+
+## 🏗️ System Architecture
+
+```mermaid
+graph TD
+    User[Faculty / Admin] -->|Uploads Link| Frontend[React Frontend]
+    Frontend -->|REST API| Backend[Django Backend]
+    
+    subgraph "Processing Engine"
+        Backend -->|Fetch Metadata| GDrive[Google Drive API]
+        Backend -->|Extract Text| OCR[DocTR / OCR]
+        Backend -->|Analyze & Score| LLM[Groq LLM API]
+    end
+    
+    subgraph "Data & Reporting"
+        Backend -->|Store Data| DB[(PostgreSQL)]
+        Backend -->|Export Results| Sheets[Google Sheets API]
+    end
+```
+
+---
+
+## ✨ Key Features
+
+| Feature | Description |
+| :--- | :--- |
+| **🤖 AI-Powered Extraction** | Automatically extracts semantic data from documents (e.g., Academic Year, Degree, Role) using **Groq LLM**. |
+| **👀 Smart "Peek" Preview** | Instantly validates Google Drive links and previews folder/file names before submission to prevent errors. |
+| **📊 Automated Scoring** | Calculates **CCE (Common Criteria for Evaluation)** points automatically based on strict NBC 461 rules (e.g., BSIT = Special Project). |
+| **☁️ Cloud Integration** | Seamlessly fetches documents from **Google Drive** and exports detailed evaluation reports to **Google Sheets**. |
+| **📈 Gap Analysis** | Visualizes the gap between a faculty's current points and the next rank requirements. |
+| **🔒 Secure Auth** | Role-based access control (Faculty vs. Admin) with email verification and secure session management. |
+
+---
 
 ## 🛠️ Tech Stack
 
-### Backend (Django)
-- **Framework:** Django REST Framework (DRF)
-- **Database:** PostgreSQL
-- **AI/ML:** BERT (Bidirectional Encoder Representations from Transformers) for document classification.
-- **Services:**
-  - **Analysis Engine:** Implements complex NBC 461 scoring and rank hierarchy logic.
-  - **Document Processing:** Extracts and processes text from uploaded documents.
-  - **Google Integration:** Seamless interaction with Google Drive and Google Sheets.
-  - **Email Service:** Automated SMTP email notifications and verification.
+<details>
+<summary><b>Frontend (Client Side)</b></summary>
 
-### Frontend (React)
-- **Framework:** React.js
-- **Routing:** React Router DOM
-- **State Management:** Context API (AuthContext)
-- **Styling:** CSS3 with responsive design.
+*   **Framework:** React.js 18
+*   **Styling:** Bootstrap 5, Custom CSS, Framer Motion (Animations)
+*   **State Management:** Context API
+*   **HTTP Client:** Axios
+</details>
 
-### Infrastructure
-- **Containerization:** Docker & Docker Compose
-- **Environment Management:** Python Decouple for secure configuration.
+<details>
+<summary><b>Backend (Server Side)</b></summary>
 
-## 📂 Project Structure
+*   **Framework:** Django REST Framework (DRF)
+*   **AI/ML:** Groq API (LLM), PyTorch, DocTR (OCR)
+*   **Database:** PostgreSQL / SQLite (Dev)
+*   **Task Queue:** Celery (Optional for async tasks)
+</details>
 
-```
-├── backend/                # Django REST Framework project
-│   ├── api/                # Core application logic (Models, Views, Serializers)
-│   │   ├── ml_models/      # BERT model weights and tokenizers
-│   │   ├── services/       # Business logic (NBC 461 Engine, ML, Google API)
-│   │   └── views/          # API Endpoints (Auth, Upload, Analytics)
-│   ├── DocEvalKapiyu/      # Project configuration (Settings, URLs)
-│   └── manage.py
-├── frontend/               # React.js application
-│   ├── src/
-│   │   ├── components/     # UI Components (Dashboards, Upload, Auth)
-│   │   ├── contexts/       # Global state (Auth)
-│   │   └── services/       # API communication layer
-│   └── package.json
-└── docker-compose.yml      # Orchestration for Backend, Frontend, and DB
-```
+<details>
+<summary><b>Integrations & Tools</b></summary>
 
-## ⚙️ Setup & Installation
+*   **Google Cloud Platform:** Drive API v3, Sheets API v4
+*   **Containerization:** Docker & Docker Compose
+*   **Authentication:** JWT / Token-based Auth
+</details>
+
+---
+
+## 🚀 Getting Started
 
 ### Prerequisites
-- Docker and Docker Compose
-- Google Cloud Service Account (for Drive/Sheets API)
-- API Keys for Gemini/Groq (if used for enhanced analysis)
+*   Node.js & npm
+*   Python 3.10+
+*   Google Cloud Service Account (`credentials.json`)
+*   Groq API Key
 
-### Environment Variables
-Create a `.env` file in the root directory based on `.env.example`:
-```env
-SECRET_KEY=your_django_secret
-DEBUG=True
-DB_NAME=docevalkapiyu
-DB_USER=postgres
-DB_PASSWORD=your_password
-EMAIL_HOST_USER=your_email
-EMAIL_HOST_PASSWORD=your_app_password
-GOOGLE_API_KEY=your_google_api_key
-# ... other keys
-```
-
-### Running with Docker
+### 1. Clone the Repository
 ```bash
-docker-compose up --build
+git clone https://github.com/yourusername/DocEvalKapiyu.git
+cd DocEvalKapiyu
 ```
-The application will be available at:
-- **Frontend:** `http://localhost:3000`
-- **Backend API:** `http://localhost:8000`
 
-## ⚖️ NBC 461 Implementation
-The system automatically applies KRA weights based on the faculty's current rank:
-- **Instructor:** KRA I (60%), KRA II (10%), KRA III (20%), KRA IV (10%)
-- **Professor:** KRA I (30%), KRA II (40%), KRA III (20%), KRA IV (10%)
-- *And other ranks as per Table 2.2 of NBC 461.*
+### 2. Backend Setup
+```bash
+cd backend
+python -m venv venv
+# Windows
+.\venv\Scripts\activate
+# Linux/Mac
+source venv/bin/activate
 
-## 📄 License
-This project is developed as part of a Thesis. All rights reserved.
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver
+```
+
+### 3. Frontend Setup
+```bash
+cd frontend
+npm install
+npm start
+```
+
+---
+
+## ⚙️ Configuration
+
+Create a `.env` file in the `backend` directory:
+
+```env
+# Django Settings
+SECRET_KEY=your_secret_key
+DEBUG=True
+
+# Database
+DB_NAME=doceval_db
+DB_USER=postgres
+DB_PASSWORD=password
+DB_HOST=localhost
+
+# API Keys
+GROQ_API_KEY=gsk_...
+GOOGLE_SERVICE_ACCOUNT_FILE=credentials.json
+
+# Email
+EMAIL_HOST_USER=your_email@gmail.com
+EMAIL_HOST_PASSWORD=your_app_password
+```
+
+---
+
+## ⚖️ NBC 461 Scoring Logic
+
+The system implements strict scoring rules defined in `backend/api/services/scoring_rules.py`:
+
+*   **KRA I (Instruction):** 
+    *   *Advisership:* BSIT -> Special Project (SP), BSCS -> Undergraduate Thesis (UT).
+*   **KRA II (Research):** 
+    *   Scoring based on role (Author/Co-author) and publication level (International/National).
+*   **KRA III (Extension):** 
+    *   Hours-based calculation for community service.
+
+---
+
+## 👥 Authors
+
+*   **Rolan Sotomayor** - *Lead Developer*
+
+---
+
+<div align="center">
+  <sub>Built with ❤️ for Academic Excellence</sub>
+</div>
