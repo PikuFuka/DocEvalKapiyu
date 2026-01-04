@@ -47,7 +47,7 @@ graph TD
 
         subgraph "AI Processing Pipeline"
             DocTR -->|6. Raw Text| BERT[TripleBERT Classifier]
-            BERT -->|7. Classify (KRA/Criteria)| Router[Extraction Router]
+            BERT -->|7. Classify KRA and Criteria| Router[Extraction Router]
             Router -->|8. Contextual Prompt| Groq[Groq LLM API]
             Groq -->|9. Structured JSON| Scoring[Scoring Engine]
         end
