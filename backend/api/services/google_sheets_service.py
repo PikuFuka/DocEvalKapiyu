@@ -14,7 +14,7 @@ APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxvJJMd8j7reRaSNHbX7y
 SEMESTER_MAPPING = {
     "first": "1st", "1st": "1st",
     "second": "2nd", "2nd": "2nd"
-}
+}   
 
 # =============================================================================
 #  HELPER FUNCTIONS
@@ -134,6 +134,131 @@ def send_panel_to_sheet(spreadsheet_id, academic_year, level, count, score, driv
     }
     return _send_payload(payload, "KRA 1C Panel")
 
+def send_citation_to_sheet(spreadsheet_id, scope, title, date_published, journal, citation_count, citation_index, citation_years, score, drive_link):
+    """
+    Sends KRA 2A Citation Data (Local/International).
+    scope: 'local' (Row 91) or 'international' (Row 110)
+    """
+    payload = {
+        "action": "kra2a_citation",
+        "spreadsheet_id": spreadsheet_id,
+        "scope": scope, # "local" or "international"
+        "title": title,
+        "date_published": date_published,
+        "journal": journal,
+        "citation_count": citation_count,
+        "citation_index": citation_index,
+        "citation_years": citation_years,
+        "score": score,
+        "drive_link": drive_link
+    }
+    return _send_payload(payload, f"KRA 2A Citation ({scope})")
+
+def send_invention_to_sheet(spreadsheet_id, invention_title, patent_type, date_application, date_granted, is_sole, contribution, score, drive_link):
+    """
+    Sends KRA 2B Invention (Utility/Industrial) Data.
+    """
+    payload = {
+        "action": "kra2b_invention",
+        "spreadsheet_id": spreadsheet_id,
+        "invention_title": invention_title,
+        "patent_type": patent_type,
+        "date_application": date_application,
+        "date_granted": date_granted,
+        "is_sole": is_sole,
+        "contribution": contribution,
+        "score": score,
+        "drive_link": drive_link
+    }
+    return _send_payload(payload, "KRA 2B Invention")
+
+def send_kra3_judge_to_sheet(spreadsheet_id, title, organizer, date, nature, venue, score, drive_link):
+    """Sends KRA 3 Judge/Examiner Data."""
+    payload = {
+        "action": "kra3_judge",
+        "spreadsheet_id": spreadsheet_id,
+        "title": title,
+        "organizer": organizer,
+        "date": date,
+        "nature": nature,
+        "venue": venue,
+        "score": score,
+        "drive_link": drive_link
+    }
+    return _send_payload(payload, "KRA 3 Judge")
+
+def send_kra3_consultant_to_sheet(spreadsheet_id, title, organization, start_date, end_date, scope, role, score, drive_link):
+    """Sends KRA 3 Consultant Data."""
+    payload = {
+        "action": "kra3_consultant",
+        "spreadsheet_id": spreadsheet_id,
+        "title": title,
+        "organization": organization,
+        "start_date": start_date,
+        "end_date": end_date,
+        "scope": scope,
+        "role": role,
+        "score": score,
+        "drive_link": drive_link
+    }
+    return _send_payload(payload, "KRA 3 Consultant")
+
+def send_kra3_community_to_sheet(spreadsheet_id, title, community, beneficiaries, role, date, score, drive_link):
+    """Sends KRA 3 Community Extension Data."""
+    payload = {
+        "action": "kra3_community",
+        "spreadsheet_id": spreadsheet_id,
+        "title": title,
+        "community": community,
+        "beneficiaries": beneficiaries,
+        "role": role,
+        "date": date,
+        "score": score,
+        "drive_link": drive_link
+    }
+    return _send_payload(payload, "KRA 3 Community")
+
+def send_client_satisfaction_to_sheet(spreadsheet_id, semester, academic_year, score, drive_link):
+    """Sends KRA 3 Client Satisfaction Data."""
+    payload = {
+        "action": "kra3_client_satisfaction",
+        "spreadsheet_id": spreadsheet_id,
+        "semester": semester,
+        "academic_year": academic_year,
+        "score": score,
+        "drive_link": drive_link
+    }
+    return _send_payload(payload, "KRA 4 Client Satisfaction")
+
+def send_admin_designation_to_sheet(spreadsheet_id, designation, period, score, drive_link):
+    """Sends KRA 3 Administrative Designation Data."""
+    payload = {
+        "action": "kra3_admin_designation",
+        "spreadsheet_id": spreadsheet_id,
+        "designation": designation,
+        "period": period,
+        "score": score,
+        "drive_link": drive_link
+    }
+    return _send_payload(payload, "KRA 3 Admin Designation")
+
+def send_kra3_training_to_sheet(spreadsheet_id, title, participation_type, organizer, start_date, end_date, scope, hours, score, drive_link):
+    """Sends KRA 3 Training/Resource Person Data."""
+    payload = {
+        "action": "kra3_training",
+        "spreadsheet_id": spreadsheet_id,
+        "title": title,
+        "participation_type": participation_type,
+        "organizer": organizer,
+        "start_date": start_date,
+        "end_date": end_date,
+        "scope": scope,
+        "hours": hours,
+        "score": score,
+        "drive_link": drive_link
+    }
+    return _send_payload(payload, "KRA 3 Training")
+
 def _send_payload(payload, context_name):
     """Internal helper to send POST request."""
     try:
@@ -156,6 +281,49 @@ def _send_payload(payload, context_name):
         logger.error(f"Error sending {context_name} data to spreadsheet: {e}")
         
     return False
+
+    return _send_payload(payload, "KRA 3 Training")
+
+def send_kra4_participation_to_sheet(spreadsheet_id, name_of_conference, scope, organizer, date_of_activity, score, drive_link):
+    payload = {
+        "action": "kra4_participation",
+        "spreadsheet_id": spreadsheet_id,
+        "name_of_conference": name_of_conference,
+        "scope": scope,
+        "organizer": organizer,
+        "date_of_activity": date_of_activity,
+        "score": score,
+        "drive_link": drive_link
+    }
+    return _send_payload(payload, "KRA 4 Participation")
+
+def send_kra4_paper_presentation_to_sheet(spreadsheet_id, title_of_paper, scope, title_of_conference, conference_organizer, date_presented, score, drive_link):
+    payload = {
+        "action": "kra4_paper_presentation",
+        "spreadsheet_id": spreadsheet_id,
+        "title_of_paper": title_of_paper,
+        "scope": scope,
+        "title_of_conference": title_of_conference,
+        "conference_organizer": conference_organizer,
+        "date_presented": date_presented,
+        "score": score,
+        "drive_link": drive_link
+    }
+    return _send_payload(payload, "KRA 4 Paper Presentation")
+
+def send_kra4_award_to_sheet(spreadsheet_id, name_of_award, scope, awarding_body, date_given, venue, score, drive_link):
+    payload = {
+        "action": "kra4_award",
+        "spreadsheet_id": spreadsheet_id,
+        "name_of_award": name_of_award,
+        "scope": scope,
+        "awarding_body": awarding_body,
+        "date_given": date_given,
+        "venue": venue,
+        "score": score,
+        "drive_link": drive_link
+    }
+    return _send_payload(payload, "KRA 4 Award")
 
 # Function for user creation (kept from your original code)
 def create_user_google_sheet(user_data):

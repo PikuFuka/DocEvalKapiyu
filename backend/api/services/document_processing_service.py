@@ -20,8 +20,20 @@ from .google_sheets_service import (
     send_research_to_sheet, 
     send_program_contribution_to_sheet,
     send_adviser_to_sheet,
-    send_panel_to_sheet
-)
+    send_panel_to_sheet,
+    send_citation_to_sheet,
+    send_invention_to_sheet,
+    send_kra3_consultant_to_sheet,
+    send_kra3_judge_to_sheet,
+    send_kra3_community_to_sheet,
+    send_client_satisfaction_to_sheet,
+    send_kra3_training_to_sheet,
+    send_kra4_participation_to_sheet,
+    send_kra4_paper_presentation_to_sheet,
+    send_admin_designation_to_sheet,
+    send_kra4_award_to_sheet
+    )
+
 from .extraction_strategies import route_extraction
 from .scoring_rules import calculate_score, SCORING_RULES
 
@@ -317,11 +329,18 @@ def extract_text_with_doctr(file_path, mime_type):
 
         # Run OCR
         print(f"Running DocTR on {file_path}...")
+        
+        # Limit to first 3 pages for speed
+        original_page_count = len(doc)
+        if original_page_count > 3:
+            print(f"Limiting DocTR to first 3 pages (original: {original_page_count} pages)")
+            doc = doc[:3]
+            
         result = DOCTR_MODEL(doc)
         
         # Reconstruct text
         full_text = ""
-        page_count = len(result.pages)
+        # page_count = len(result.pages) # This would be capped at 3
         
         for page in result.pages:
             for block in page.blocks:
@@ -331,7 +350,7 @@ def extract_text_with_doctr(file_path, mime_type):
                     full_text += "\n"
         
         print("DocTR Extraction Complete.")
-        return full_text, page_count
+        return full_text, original_page_count
 
     except Exception as e:
         print(f"DocTR extraction error: {e}")
@@ -392,6 +411,7 @@ def map_classification_to_evidence_type(classification_result):
         ("2", "B", "1.1.1"): "kra2b_invention",
         ("2", "B", "1.1.2"): "kra2b_utility",
         ("2", "B", "1.1.3"): "kra2b_industrial",
+
         ("2", "B", "1.2.1"): "kra2b_commercialized",
         ("2", "B", "1.2.2"): "kra2b_commercialized",
         ("2", "B", "2.1.1"): "kra2b_new_software",
@@ -407,6 +427,44 @@ def map_classification_to_evidence_type(classification_result):
         ("2", "C", "1.4.2"): "kra2c_literary",
         ("2", "C", "1.4.3"): "kra2c_literary",
         ("2", "C", "1.4.4"): "kra2c_literary",
+
+        ("3", "B", "1.2.1"): "kra3_judge",
+        ("3", "B", "1.2.2"): "kra3_judge",
+        ("3", "B", "1.3.1"): "kra3_consultant",
+        ("3", "B", "1.3.2"): "kra3_consultant",
+        ("3", "B", "2.1.1"): "kra3_community",
+        ("3", "B", "2.1.2"): "kra3_community",
+
+        ("3", "B", "1.5.1"): "kra3_training",
+        ("3", "B", "1.5.2"): "kra3_training",
+
+        ("3", "C", "1"): "kra3_client_satisfaction",
+
+        # KRA 3: Administrative Designation (3.D)
+        ("3", "D", "1.1.1"): "kra3_admin_designation",
+        ("3", "D", "1.1.2"): "kra3_admin_designation",
+        ("3", "D", "1.1.3"): "kra3_admin_designation",
+        ("3", "D", "1.1.4"): "kra3_admin_designation",
+        ("3", "D", "1.1.5"): "kra3_admin_designation",
+        ("3", "D", "1.1.6"): "kra3_admin_designation",
+        ("3", "D", "1.1.7"): "kra3_admin_designation",
+        ("3", "D", "1.1.8"): "kra3_admin_designation",
+        ("3", "D", "1.1.9"): "kra3_admin_designation",
+        ("3", "D", "1.1.10"): "kra3_admin_designation",
+        ("3", "D", "1.2.1"): "kra3_admin_designation",
+        ("3", "D", "1.2.2"): "kra3_admin_designation",
+        ("3", "D", "1.2.3"): "kra3_admin_designation",
+        ("3", "D", "1.2.4"): "kra3_admin_designation",
+        ("3", "D", "1.2.5"): "kra3_admin_designation",
+        ("3", "D", "1.2.6"): "kra3_admin_designation",
+
+        ("4", "B", "2.1"): "kra4_participation",
+        ("4", "B", "2.2"): "kra4_participation",
+        ("4", "B", "3.1"): "kra4_paper_presentation",
+        ("4", "B", "3.2"): "kra4_paper_presentation",
+
+        ("4", "C", "1.1"): "kra4_award",
+        ("4", "C", "1.2"): "kra4_award",
     }
 
     ev_type = mapping.get((pk, cr, sc))    
@@ -568,25 +626,125 @@ def _process_kra2a_research_to_project_contributor(text, classification_result, 
     """Process KRA 2A Contributor Research-to-Project."""
     pass # Implement standard scoring loop
 
+def _consolidate_citations(extracted_items, scope):
+    """Helper to consolidate citations by Title."""
+    if not extracted_items: return [], 0.0
+    
+    consolidated = {}
+    total_score = 0.0
+    base_points = 5 if scope == "local" else 10
+
+    for item in extracted_items:
+        # Normalize title for grouping
+        raw_title = item.get("title", "Untitled")
+        norm_title = raw_title.strip().lower()
+        
+        if norm_title not in consolidated:
+            consolidated[norm_title] = {
+                "title": raw_title, # Keep original casing of first occurrence
+                "journal": item.get("journal", ""),
+                "date_published": item.get("date_published", ""),
+                "citation_index": item.get("citation_index", ""),
+                "citation_years": item.get("citation_years", ""),
+                "citation_count": 0,
+                "scope": scope
+            }
+        
+        # Sum counts
+        count = item.get("citation_count", 0)
+        consolidated[norm_title]["citation_count"] += count
+        
+        # Merge years if possible (simple concatenation for now, or keep first)
+        # If the new item has years and the existing one doesn't, update it
+        if item.get("citation_years") and not consolidated[norm_title]["citation_years"]:
+             consolidated[norm_title]["citation_years"] = item.get("citation_years")
+
+    # Rebuild list and calculate scores
+    processed_items = []
+    for norm_title, data in consolidated.items():
+        count = data["citation_count"]
+        score = count * base_points
+        total_score += score
+        
+        # Update raw data with consolidated values
+        data["calculated_score"] = score
+        
+        processed_items.append({
+            "title": data["title"],
+            "description": f"{scope.capitalize()} Citation. Count: {count}",
+            "role": "Author",
+            "points": score,
+            "evidence_type": f"kra2a_citation_{scope}",
+            "auto_generated": True,
+            "extracted_raw": data
+        })
+        
+    return processed_items, total_score
+
 def _process_kra2a_citation_local(text, classification_result, upload, extracted_items):
     """Process KRA 2A Local Citation."""
-    pass # Implement standard scoring loop
+    processed_items, total_score = _consolidate_citations(extracted_items, "local")
+    upload.total_score = total_score
+    return processed_items
 
 def _process_kra2a_citation_international(text, classification_result, upload, extracted_items):
     """Process KRA 2A International Citation."""
-    pass # Implement standard scoring loop
+    processed_items, total_score = _consolidate_citations(extracted_items, "international")
+    upload.total_score = total_score
+    return processed_items
 
 def _process_kra2b_invention(text, classification_result, upload, extracted_items):
     """Process KRA 2B Invention Patents."""
     pass # Implement standard scoring loop
 
+def _process_kra2b_invention_common(text, classification_result, upload, extracted_items, evidence_type):
+    """Common processor for Utility Model and Industrial Design."""
+    if not extracted_items: return []
+    
+    item = extracted_items[0]
+    
+    # Determine Base Score
+    # Utility Model = 10, Industrial Design = 5
+    subtype = item.get("subtype", "utility_model")
+    base_score = 10 if "utility" in subtype else 5
+    
+    is_sole = item.get("is_sole", False)
+    contribution = item.get("contribution_percent", 100)
+    
+    if is_sole:
+        final_score = base_score
+        role_display = "Sole Inventor"
+        contribution = 100
+    else:
+        final_score = base_score * (contribution / 100.0)
+        role_display = f"Co-Inventor ({contribution}%)"
+        
+    final_score = round(final_score, 2)
+    upload.total_score = final_score
+    
+    # Update raw data
+    item["calculated_score"] = final_score
+    item["contribution_percent"] = contribution
+    
+    processed_item = {
+        "title": item.get("title", "Untitled Invention"),
+        "description": f"{role_display}. Type: {item.get('patent_type')}",
+        "role": role_display,
+        "points": final_score,
+        "evidence_type": evidence_type,
+        "auto_generated": True,
+        "extracted_raw": item
+    }
+    
+    return [processed_item]
+
 def _process_kra2b_utility(text, classification_result, upload, extracted_items):
     """Process KRA 2B Utility Models."""
-    pass # Implement standard scoring loop
+    return _process_kra2b_invention_common(text, classification_result, upload, extracted_items, "kra2b_utility")
 
 def _process_kra2b_industrial(text, classification_result, upload, extracted_items):
     """Process KRA 2B Industrial Designs."""
-    pass # Implement standard scoring loop
+    return _process_kra2b_invention_common(text, classification_result, upload, extracted_items, "kra2b_industrial")
 
 def _process_kra2b_commercialized(text, classification_result, upload, extracted_items):
     """Process KRA 2B Commercialized Patents."""
@@ -627,6 +785,230 @@ def _process_kra2c_literary(text, classification_result, upload, extracted_items
 def _process_fallback(text, classification_result, upload, extracted_items):
     pass
 
+def _process_kra3_judge(text, classification_result, upload, extracted_items):
+    """Process KRA 3 Judge."""
+    print(f"--- Processing KRA 3 Judge ---")
+    processed_items = []
+    total_score = 0.0
+
+    for item in extracted_items:
+        # Calculate Score (Flat rate)
+        score = calculate_score("kra3_judge", "default") 
+        
+        item['points'] = score
+        item['extracted_raw'] = item.copy()
+        processed_items.append(item)
+        total_score += score
+
+    upload.total_score = total_score
+    return processed_items
+
+def _process_kra3_consultant(text, classification_result, upload, extracted_items):
+    """Process KRA 3 Consultant."""
+    print(f"--- Processing KRA 3 Consultant ---")
+    processed_items = []
+    total_score = 0.0
+
+    for item in extracted_items:
+        scope = item.get("scope", "Local")
+        # Ensure scope matches keys in SCORING_RULES (Local/International)
+        # LLM might return "local" or "Local".
+        if scope.lower() == "local": scope = "Local"
+        elif scope.lower() == "international": scope = "International"
+        
+        score = calculate_score("kra3_consultant", scope)
+        
+        item['points'] = score
+        item['extracted_raw'] = item.copy()
+        processed_items.append(item)
+        total_score += score
+
+    upload.total_score = total_score
+    return processed_items
+
+def _process_kra3_community(text, classification_result, upload, extracted_items):
+    """Process KRA 3 Community Service."""
+    print(f"--- Processing KRA 3 Community ---")
+    processed_items = []
+    total_score = 0.0
+
+    for item in extracted_items:
+        role = item.get("role", "Participant")
+        # Ensure role matches keys (Head/Participant)
+        if role.lower() == "head": role = "Head"
+        elif role.lower() == "participant": role = "Participant"
+
+        score = calculate_score("kra3_community", role)
+        
+        item['points'] = score
+        item['extracted_raw'] = item.copy()
+        processed_items.append(item)
+        total_score += score
+
+    upload.total_score = total_score
+    return processed_items
+
+def _process_kra3_client_satisfaction(text, classification_result, upload, extracted_items):
+    """Process KRA 3 Client Satisfaction."""
+    print(f"--- Processing KRA 3 Client Satisfaction ---")
+    processed_items = []
+    total_score = 0.0
+
+    for item in extracted_items:
+        # Score is extracted directly, no calculation needed
+        score = item.get("score", 0.0)
+        
+        item['points'] = score
+        item['extracted_raw'] = item.copy()
+        processed_items.append(item)
+        total_score += score # Usually this is an average, but we'll sum if multiple? Usually 1 per doc.
+
+    upload.total_score = total_score
+    return processed_items
+
+def _process_kra3_admin_designation(text, classification_result, upload, extracted_items):
+    """Process KRA 3 Administrative Designation."""
+    print(f"--- Processing KRA 3 Admin Designation ---")
+    processed_items = []
+    total_score = 0.0
+
+    # Mapping Sub-Criterion Code to Description (Designation)
+    CRI_DESCRIPTION = {
+        "1.1.1": "President or OIC President",
+        "1.1.2": "Vice-President",
+        "1.1.3": "Chancellor",
+        "1.1.4": "Vice-Chancellor",
+        "1.1.5": "Campus Director/Administrator/Head",
+        "1.1.6": "Faculty Regent",
+        "1.1.7": "Office Director",
+        "1.1.8": "Univ./College Secretary",
+        "1.1.9": "Project Head",
+        "1.1.10C": "Institution-level Committee Chair",
+        "1.1.10M": "Institution-level Committee Member",
+        "1.2.1": "Dean",
+        "1.2.2": "Associate Dean",
+        "1.2.3": "College Secretary",
+        "1.2.4": "Department Head",
+        "1.2.5": "Program Chair/Project Head",
+        "1.2.6C": "Department-level Committee Chair",
+        "1.2.6M": "Department-level Committee Member"
+    }
+
+    sub_crit_code = classification_result.get("sub_criterion", "")
+    cri_description = CRI_DESCRIPTION.get(sub_crit_code)
+
+    if cri_description:
+        print(f"-> Using cri_description for {sub_crit_code}: {cri_description}")
+        # If LLM failed to extract anything, create a default item
+        if not extracted_items:
+            extracted_items = [{
+                "designation": cri_description,
+                "period": "N/A",
+                "extracted_raw": {}
+            }]
+
+    for item in extracted_items:
+        # Override designation if mapping exists
+        if cri_description:
+            item["designation"] = cri_description
+            designation = cri_description.lower()
+        else:
+            designation = item.get("designation", "").lower()
+        
+        # Map designation to scoring key
+        scoring_key = "default"
+        if "president" in designation:
+            if "vice" in designation: scoring_key = "vice_president"
+            elif "oic" in designation: scoring_key = "oic_president"
+            else: scoring_key = "president"
+        elif "chancellor" in designation:
+            if "vice" in designation: scoring_key = "vice_chancellor"
+            else: scoring_key = "chancellor"
+        elif "campus director" in designation or "administrator" in designation: scoring_key = "campus_director"
+        elif "faculty regent" in designation: scoring_key = "faculty_regent"
+        elif "office director" in designation: scoring_key = "office_director"
+        elif "university secretary" in designation: scoring_key = "university_secretary"
+        elif "college secretary" in designation: scoring_key = "college_secretary"
+        elif "dean" in designation:
+            if "associate" in designation: scoring_key = "associate_dean"
+            else: scoring_key = "dean"
+        elif "department head" in designation: scoring_key = "department_head"
+        elif "program chair" in designation: scoring_key = "program_chair"
+        elif "project head" in designation: scoring_key = "project_head" # Ambiguous (1.1.9 vs 1.2.5), using 4pts default or logic?
+        # Note: Project Head is 4pts (1.1.9) or 3pts (1.2.5). 
+        # Let's assume 1.1.9 (4pts) if "University" context, else 3pts. 
+        # For simplicity, I'll map to "project_head" (4pts) for now.
+        
+        elif "committee" in designation:
+            if "chair" in designation: scoring_key = "institution_committee_chair" # Default to higher
+            else: scoring_key = "institution_committee_member"
+
+        score = calculate_score("kra3_admin_designation", scoring_key)
+        
+        item['points'] = score
+        item['extracted_raw'] = item.copy()
+        processed_items.append(item)
+        total_score += score
+
+    upload.total_score = total_score
+    return processed_items
+
+def _process_kra3_training(text, classification_result, upload, extracted_items):
+    """Process KRA 3 Training/Resource Person."""
+    print(f"--- Processing KRA 3 Training ---")
+    processed_items = []
+    total_score = 0.0
+
+    for item in extracted_items:
+        role = item.get("participation_type", "").lower()
+        hours = item.get("hours", 0)
+        
+        scoring_key = "default"
+        if "resource" in role or "speaker" in role:
+            scoring_key = "resource_person"
+        elif "participant" in role:
+            scoring_key = "participant"
+        elif "facilitator" in role:
+            scoring_key = "facilitator"
+        elif "moderator" in role:
+            scoring_key = "moderator"
+
+        # Calculate score: Rate * Hours
+        # calculate_score returns the rate (e.g., 2.0)
+        rate = calculate_score("kra3_training", scoring_key)
+        score = rate * hours
+        
+        item['points'] = score
+        item['extracted_raw'] = item.copy()
+        processed_items.append(item)
+        total_score += score
+
+    upload.total_score = total_score
+    return processed_items
+
+def _process_kra4_participation(text, classification_result, upload, extracted_items):
+    """Process KRA 4 Participation."""
+    if not extracted_items:
+        return []
+    
+    # Just return items, sending is done in process_document_upload
+    return extracted_items
+
+def _process_kra4_paper_presentation(text, classification_result, upload, extracted_items):
+    """Process KRA 4 Paper Presentation."""
+    if not extracted_items:
+        return []
+    
+    # Just return items, sending is done in process_document_upload
+    return extracted_items
+
+def _process_kra4_award(text, classification_result, upload, extracted_items):
+    """Process KRA 4 Award."""
+    if not extracted_items:
+        return []
+    # Just return items, sending is done in process_document_upload
+    return extracted_items
+
 # Maps evidence_type to the appropriate processing strategy function
 PROCESSING_STRATEGIES = {
     "kra1a_evaluation": _process_kra1a_evaluation,
@@ -652,6 +1034,15 @@ PROCESSING_STRATEGIES = {
     "kra2c_exhibition": _process_kra2c_exhibition,
     "kra2c_juried_design": _process_kra2c_juried_design,
     "kra2c_literary": _process_kra2c_literary,
+    "kra3_judge": _process_kra3_judge,
+    "kra3_consultant": _process_kra3_consultant,
+    "kra3_training": _process_kra3_training,
+    "kra3_community": _process_kra3_community,
+    "kra3_admin_designation": _process_kra3_admin_designation,
+    "kra3_client_satisfaction": _process_kra3_client_satisfaction,
+    "kra4_participation": _process_kra4_participation,
+    "kra4_paper_presentation": _process_kra4_paper_presentation,
+    "kra4_award": _process_kra4_award,
     # Add other specific types as they are implemented
 }
 
@@ -728,12 +1119,6 @@ def process_document_upload(upload):
         if not priority_file and file_info_list:
             priority_file = file_info_list[0]
             print(f"-> No specific priority detected. Using first file as anchor: {priority_file['file_name']}")
-
-        # --- UPDATE UPLOAD FILENAME ---
-        # If it's a folder, we want the folder name, but we only have file names here.
-        # We can try to infer it or just use the first file name.
-        # Ideally, extract_text_from_drive should return the folder name too.
-        # For now, let's use the first file's name or a generic name if multiple.
         
         final_display_name = priority_file['file_name']
         if len(file_info_list) > 1:
@@ -782,7 +1167,7 @@ def process_document_upload(upload):
                         if file_items:
                             for item in file_items:
                                 # Accumulate score
-                                item_score = item.get("total_score", 0)
+                                item_score = item.get("total_score") or item.get("score") or item.get("points") or 0
                                 cumulative_score += item_score
                                 extracted_data.append(item)
                     
@@ -796,6 +1181,13 @@ def process_document_upload(upload):
                     result = processor(combined_text, classification_result, upload, raw_items)
                     if result is not None:
                         extracted_data = result
+                        
+                        # Ensure total_score is updated if the processor didn't set it
+                        if not upload.total_score and extracted_data:
+                            calc_score = 0
+                            for item in extracted_data:
+                                calc_score += item.get("total_score") or item.get("score") or item.get("points") or 0
+                            upload.total_score = calc_score
 
             except Exception as e:
                 print(f"Extraction error: {e}")
@@ -997,8 +1389,6 @@ def process_document_upload(upload):
                             final_ay = Counter(ays).most_common(1)[0][0] if ays else "2022-2023"
                             final_level = Counter(levels).most_common(1)[0][0] if levels else "UT"
                             
-                            print(f"   -> Consolidated Batch: {final_ay} - {final_level} (Total: {total_count})")
-                            
                             # 3. Send Single Consolidated Request
                             send_panel_to_sheet(
                                 spreadsheet_id=spreadsheet_id,
@@ -1008,6 +1398,193 @@ def process_document_upload(upload):
                                 score=total_score,
                                 drive_link=folder_link
                             )
+
+                        elif evidence_type in ["kra2a_citation_local", "kra2a_citation_international"] and extracted_data:
+                            print(f"-> Sending KRA 2A Citation to Sheets ({len(extracted_data)} items)...")
+                            
+                            for item in extracted_data:
+                                raw = item.get("extracted_raw", {})
+                                
+                                # Date Sanitization
+                                date_clean = raw.get("date_published", "")
+                                try:
+                                    if date_clean and date_clean != "N/A":
+                                        if "-" in date_clean and len(date_clean.split("-")) == 3:
+                                            date_obj = datetime.strptime(date_clean.strip(), "%Y-%m-%d")
+                                            date_clean = date_obj.strftime("%m/%d/%Y")
+                                        elif "," in date_clean:
+                                            date_obj = datetime.strptime(date_clean.strip(), "%B %d, %Y")
+                                            date_clean = date_obj.strftime("%m/%d/%Y")
+                                        elif len(date_clean.strip()) == 4 and date_clean.strip().isdigit():
+                                            date_clean = f"01/01/{date_clean.strip()}"
+                                except:
+                                    pass
+
+                                send_citation_to_sheet(
+                                    spreadsheet_id=spreadsheet_id,
+                                    scope=raw.get("scope", "local"),
+                                    title=raw.get("title", "Untitled"),
+                                    date_published=date_clean,
+                                    journal=raw.get("journal", ""),
+                                    citation_count=raw.get("citation_count", 0),
+                                    citation_index=raw.get("citation_index", ""),
+                                    citation_years=raw.get("citation_years", ""),
+                                    score=item.get("points", 0),
+                                    drive_link=folder_link
+                                )
+
+                        elif evidence_type in ["kra2b_utility", "kra2b_industrial"] and extracted_data:
+                            print(f"-> Sending KRA 2B Invention to Sheets ({len(extracted_data)} items)...")
+                            
+                            for item in extracted_data:
+                                raw = item.get("extracted_raw", {})
+                                
+                                # Date Sanitization
+                                date_app = raw.get("date_application", "")
+                                date_grant = raw.get("date_granted", "")
+                                                                
+                                send_invention_to_sheet(
+                                    spreadsheet_id=spreadsheet_id,
+                                    invention_title=raw.get("title", "Untitled"),
+                                    patent_type=raw.get("patent_type", "Utility Model"),
+                                    date_application=date_app,
+                                    date_granted=date_grant,
+                                    is_sole=raw.get("is_sole", False),
+                                    contribution=raw.get("contribution_percent", 100),
+                                    score=item.get("points", 0),
+                                    drive_link=folder_link
+                                )
+
+                        elif evidence_type == "kra3_judge" and extracted_data:
+                            print(f"-> Sending KRA 3 Judge to Sheets...")
+                            for item in extracted_data:
+                                raw = item.get("extracted_raw", {})
+                                send_kra3_judge_to_sheet(
+                                    spreadsheet_id=spreadsheet_id,
+                                    title=raw.get("title", "Untitled"),
+                                    organizer=raw.get("organizer", "N/A"),
+                                    date=raw.get("date", "N/A"),
+                                    nature=raw.get("nature", "Academic Competition"),
+                                    venue=raw.get("venue", "N/A"),
+                                    score=item.get("points", 0),
+                                    drive_link=folder_link
+                                )
+
+                        elif evidence_type == "kra3_consultant" and extracted_data:
+                            print(f"-> Sending KRA 3 Consultant to Sheets...")
+                            for item in extracted_data:
+                                raw = item.get("extracted_raw", {})
+                                send_kra3_consultant_to_sheet(
+                                    spreadsheet_id=spreadsheet_id,
+                                    title=raw.get("title", "Untitled"),
+                                    organization=raw.get("organization", "N/A"),
+                                    start_date=raw.get("start_date", "N/A"),
+                                    end_date=raw.get("end_date", "N/A"),
+                                    scope=raw.get("scope", "Local"),
+                                    role=raw.get("role", "Consultant"),
+                                    score=item.get("points", 0),
+                                    drive_link=folder_link
+                                )
+
+                        elif evidence_type == "kra3_training" and extracted_data:
+                            print(f"-> Sending KRA 3 Training to Sheets...")
+                            for item in extracted_data:
+                                raw = item.get("extracted_raw", {})
+                                
+                                send_kra3_training_to_sheet(
+                                    spreadsheet_id=spreadsheet_id,
+                                    title=raw.get("title", "Untitled"),
+                                    participation_type=raw.get("participation_type", "Participant"),
+                                    organizer=raw.get("organizer", "N/A"),
+                                    start_date=raw.get("start_date", "N/A"),
+                                    end_date=raw.get("end_date", "N/A"),
+                                    scope=raw.get("scope", "Local"),
+                                    hours=raw.get("hours", 0),
+                                    score=item.get("points", 0),
+                                    drive_link=folder_link
+                                )
+
+                        elif evidence_type == "kra3_community" and extracted_data:
+                            print(f"-> Sending KRA 3 Community to Sheets...")
+                            for item in extracted_data:
+                                raw = item.get("extracted_raw", {})
+                                send_kra3_community_to_sheet(
+                                    spreadsheet_id=spreadsheet_id,
+                                    title=raw.get("title", "Untitled"),
+                                    community=raw.get("community", "N/A"),
+                                    beneficiaries=raw.get("beneficiaries", 0),
+                                    role=raw.get("role", "Participant"),
+                                    date=raw.get("date", "N/A"),
+                                    score=item.get("points", 0),
+                                    drive_link=folder_link
+                                )
+
+                        elif evidence_type == "kra3_admin_designation" and extracted_data:
+                            print(f"-> Sending KRA 3 Admin Designation to Sheets...")
+                            for item in extracted_data:
+                                raw = item.get("extracted_raw", {})
+                                
+                                send_admin_designation_to_sheet(
+                                    spreadsheet_id=spreadsheet_id,
+                                    designation=raw.get("designation", "Untitled"),
+                                    period=raw.get("period", "N/A"),
+                                    score=item.get("points", 0),
+                                    drive_link=folder_link
+                                )
+
+                        elif evidence_type == "kra3_client_satisfaction" and extracted_data:
+                            print(f"-> Sending KRA 3 Client Satisfaction to Sheets...")
+                            for item in extracted_data:
+                                raw = item.get("extracted_raw", {})
+                                
+                                send_client_satisfaction_to_sheet(
+                                    spreadsheet_id=spreadsheet_id,
+                                    semester=raw.get("semester", "1st Semester"),
+                                    academic_year=raw.get("academic_year", "2022-2023"),
+                                    score=item.get("points", 0),
+                                    drive_link=folder_link
+                                )
+
+                        elif evidence_type == "kra4_participation" and extracted_data:
+                            print(f"-> Sending KRA 4 Participation to Sheets...")
+                            for item in extracted_data:
+                                send_kra4_participation_to_sheet(
+                                    spreadsheet_id=spreadsheet_id,
+                                    name_of_conference=item.get("name_of_conference"),
+                                    scope=item.get("scope"),
+                                    organizer=item.get("organizer", "N/A"),
+                                    date_of_activity=item.get("date_of_activity", "N/A"),
+                                    score=item.get("score", 0),
+                                    drive_link=folder_link
+                                )
+
+                        elif evidence_type == "kra4_paper_presentation" and extracted_data:
+                            print(f"-> Sending KRA 4 Paper Presentation to Sheets...")
+                            for item in extracted_data:
+                                send_kra4_paper_presentation_to_sheet(
+                                    spreadsheet_id=spreadsheet_id,
+                                    title_of_paper=item.get("title_of_paper"),
+                                    scope=item.get("scope"),
+                                    title_of_conference=item.get("title_of_conference"),
+                                    conference_organizer=item.get("conference_organizer"),
+                                    date_presented=item.get("date_presented", "N/A"),
+                                    score=item.get("score", 0),
+                                    drive_link=folder_link
+                                )
+
+                        elif evidence_type == "kra4_award" and extracted_data:
+                            print(f"-> Sending KRA 4 Award to Sheets...")
+                            for item in extracted_data:
+                                send_kra4_award_to_sheet(
+                                    spreadsheet_id=spreadsheet_id,
+                                    name_of_award=item.get("name_of_award"),
+                                    scope=item.get("scope"),
+                                    awarding_body=item.get("awarding_body"),
+                                    date_given=item.get("date_given", "N/A"),
+                                    venue=item.get("venue"),
+                                    score=item.get("score", 0),
+                                    drive_link=folder_link
+                                )
 
                     except Exception as sheet_error:
                         print(f"Error sending to Google Sheets: {sheet_error}")

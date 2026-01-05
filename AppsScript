@@ -1,0 +1,557 @@
+// =========================================================
+// CONFIGURATION
+// =========================================================
+
+// --- KRA 1A: EVALUATIONS ---
+const SHEET_NAME_KRA1A = "Form1_A"; 
+
+// --- KRA 1B & 1C: PROGRAM DEV & SERVICES ---
+const SHEET_NAME_KRA1BC = "Form1_B&C"; 
+const KRA1B_START_ROW = 51;
+
+// --- KRA 2B: INVENTION ---
+const SHEET_NAME_KRA2B = "Form2-B";
+
+// --- KRA 3: EXTENSION SERVICES ---
+const SHEET_NAME_KRA3AB = "Form 3-A&B";
+
+// --- KRA 3: MANAGEMENT OF RESOURCES ---
+const SHEET_NAME_KRA3CD = "Form 3-C&D";
+
+// --- KRA 4: PROFESSIONAL DEVELOPMENT ---
+const SHEET_NAME_KRA4 = "Form 4-A&B";
+
+const SHEET_NAME_KRA4D = "Form 4-C&D";
+
+
+
+// Map for KRA 1B (Program Dev)
+const KRA1B_MAP = {
+  PROGRAM_NAME: 2, 
+  TYPE: 5,         
+  RESO: 6,         
+  AY: 7,           
+  ROLE: 8,         
+  SCORE: 9,        
+  LINK: 10         
+};
+
+// Map for KRA 1C (Adviser/Panel)
+// Columns for Academic Years
+const AY_COL_MAP = {
+  "2019-2020": 5, // E
+  "2020-2021": 6, // F
+  "2021-2022": 7, // G
+  "2022-2023": 8  // H
+};
+
+// Rows for Adviser Levels
+const ADVISER_ROW_MAP = {
+  "SP": 69, "CP": 69, // Special/Capstone
+  "UT": 70,           // Undergraduate Thesis
+  "MT": 71,           // Master's Thesis
+  "DD": 72            // Dissertation
+};
+
+// Rows for Panel Levels
+const PANEL_ROW_MAP = {
+  "SP": 78, "CP": 78, // Special/Capstone
+  "UT": 79,           // Undergraduate Thesis
+  "MT": 80,           // Master's Thesis
+  "DD": 81            // Dissertation
+};
+
+const COL_SCORE_1C = 9; // I
+const COL_LINK_1C = 10; // J
+
+
+// --- KRA 2A: RESEARCH OUTPUTS ---
+const SHEET_NAME_KRA2A = "Form2_A";
+const ROW_SOLE = 12;
+const ROW_CO = 37;
+
+// Map SOLE
+const MAP_SOLE = {
+  TITLE: 2, TYPE: 4, JOURNAL: 5, REVIEWER: 6, INDEXING: 7, DATE: 8, SCORE: 9, LINK: 10
+};
+
+// Map CO
+const MAP_CO = {
+  TITLE: 2, TYPE: 4, JOURNAL: 5, REVIEWER: 6, INDEXING: 7, DATE: 8, CONTRIB: 9, SCORE: 10, LINK: 11
+};
+
+// =========================================================
+// MAIN HANDLER
+// =========================================================
+
+function doPost(e) {
+  const lock = LockService.getScriptLock();
+  lock.tryLock(30000); 
+
+  try {
+    const data = JSON.parse(e.postData.contents);
+    const ss = SpreadsheetApp.openById(data.spreadsheet_id);
+
+    // --------------------------------------------------------
+    // ACTION 1: KRA 1A (Student/Supervisor Evaluation)
+    // --------------------------------------------------------
+    if (data.action === "kra1a_evaluation") {
+      var sheet = ss.getSheetByName(SHEET_NAME_KRA1A);
+      
+      var academicYear = data.academic_year.trim();
+      var semester = data.semester.trim().toLowerCase();
+      var evaluationType = data.evaluation_type.trim().toLowerCase();
+
+      const cellMap = {
+        "2019-2020": {
+          "1st": { "student": { score: "F20", link: "H20" }, "supervisor": { score: "F36", link: "H36" } },
+          "2nd": { "student": { score: "I20", link: "K20" }, "supervisor": { score: "I36", link: "K36" } },
+        },
+        "2020-2021": {
+          "1st": { "student": { score: "F21", link: "H21" }, "supervisor": { score: "F37", link: "H37" } },
+          "2nd": { "student": { score: "I21", link: "K21" }, "supervisor": { score: "I37", link: "K37" } },
+        },
+        "2021-2022": {
+          "1st": { "student": { score: "F22", link: "H22" }, "supervisor": { score: "F38", link: "H38" } },
+          "2nd": { "student": { score: "I22", link: "K22" }, "supervisor": { score: "I38", link: "K38" } },
+        },
+        "2022-2023": {
+          "1st": { "student": { score: "F23", link: "H23" }, "supervisor": { score: "F39", link: "H39" } },
+          "2nd": { "student": { score: "I23", link: "K23" }, "supervisor": { score: "I39", link: "K39" } },
+        },
+      };
+
+      const cells = cellMap[academicYear]?.[semester]?.[evaluationType];
+      if (!cells) throw new Error("Invalid AY/Sem/Type mapping for KRA 1A");
+
+      sheet.getRange(cells.score).setValue(data.total_score);
+      sheet.getRange(cells.link).setValue(data.drive_link);
+      SpreadsheetApp.flush(); 
+      
+      return createJSONOutput("success", "KRA 1A Updated");
+    }
+
+    // --------------------------------------------------------
+    // ACTION 2: KRA 1B (Program Development)
+    // --------------------------------------------------------
+    else if (data.action === "kra1b_program") {
+      var sheet = ss.getSheetByName(SHEET_NAME_KRA1BC);
+      let targetRow = findFirstEmptyRow(sheet, KRA1B_START_ROW, KRA1B_MAP.PROGRAM_NAME, 100);
+
+      sheet.getRange(targetRow, KRA1B_MAP.PROGRAM_NAME).setValue(data.program_name);
+      sheet.getRange(targetRow, KRA1B_MAP.TYPE).setValue(data.program_type);
+      sheet.getRange(targetRow, KRA1B_MAP.RESO).setValue(data.board_reso);
+      sheet.getRange(targetRow, KRA1B_MAP.AY).setNumberFormat("@").setValue(data.academic_year);
+      sheet.getRange(targetRow, KRA1B_MAP.ROLE).setValue(data.role);
+      sheet.getRange(targetRow, KRA1B_MAP.SCORE).setValue(data.score);
+      sheet.getRange(targetRow, KRA1B_MAP.LINK).setValue(data.drive_link);
+      
+      SpreadsheetApp.flush(); 
+      return createJSONOutput("success", "KRA 1B Updated");
+    }
+
+    // --------------------------------------------------------
+    // ACTION 3: KRA 1C (Adviser)
+    // --------------------------------------------------------
+    else if (data.action === "kra1c_adviser") {
+      var sheet = ss.getSheetByName(SHEET_NAME_KRA1BC);
+      
+      var row = ADVISER_ROW_MAP[data.level];
+      var col = AY_COL_MAP[data.academic_year];
+      
+      if (!row) return createJSONOutput("error", "Invalid Level for Adviser: " + data.level);
+      if (!col) return createJSONOutput("error", "Invalid AY for Adviser: " + data.academic_year);
+
+      // 1. Update Count (Add to existing)
+      var countRange = sheet.getRange(row, col);
+      var currentCount = countRange.getValue();
+      if (typeof currentCount !== 'number') currentCount = 0;
+      countRange.setValue(currentCount + (data.count || 1));
+
+      // 2. Update Total Score (Add to existing)
+      var scoreRange = sheet.getRange(row, COL_SCORE_1C);
+      var currentScore = scoreRange.getValue();
+      if (typeof currentScore !== 'number') currentScore = 0;
+      scoreRange.setValue(currentScore + data.score);
+
+      // 3. Update Link (Overwrite)
+      sheet.getRange(row, COL_LINK_1C).setValue(data.drive_link);
+
+      SpreadsheetApp.flush();
+      return createJSONOutput("success", "KRA 1C Adviser Updated");
+    }
+
+    // --------------------------------------------------------
+    // ACTION 4: KRA 1C (Panel)
+    // --------------------------------------------------------
+    else if (data.action === "kra1c_panel") {
+      var sheet = ss.getSheetByName(SHEET_NAME_KRA1BC);
+      
+      var row = PANEL_ROW_MAP[data.level];
+      var col = AY_COL_MAP[data.academic_year];
+      
+      if (!row) return createJSONOutput("error", "Invalid Level for Panel: " + data.level);
+      if (!col) return createJSONOutput("error", "Invalid AY for Panel: " + data.academic_year);
+
+      // 1. Update Count (Add to existing)
+      var countRange = sheet.getRange(row, col);
+      var currentCount = countRange.getValue();
+      if (typeof currentCount !== 'number') currentCount = 0;
+      countRange.setValue(currentCount + (data.count || 1));
+
+      // 2. Update Total Score (Add to existing)
+      var scoreRange = sheet.getRange(row, COL_SCORE_1C);
+      var currentScore = scoreRange.getValue();
+      if (typeof currentScore !== 'number') currentScore = 0;
+      scoreRange.setValue(currentScore + data.score);
+
+      // 3. Update Link (Overwrite)
+      sheet.getRange(row, COL_LINK_1C).setValue(data.drive_link);
+
+      SpreadsheetApp.flush();
+      return createJSONOutput("success", "KRA 1C Panel Updated");
+    }
+
+    // --------------------------------------------------------
+    // ACTION 5: KRA 2A (Research Outputs)
+    // --------------------------------------------------------
+    else if (data.action === "kra2a_research") {
+      var sheet = ss.getSheetByName(SHEET_NAME_KRA2A);
+      
+      var isSole = (data.author_mode === "sole");
+      var startRow = isSole ? ROW_SOLE : ROW_CO;
+      var map = isSole ? MAP_SOLE : MAP_CO;
+
+      let targetRow = findFirstEmptyRow(sheet, startRow, map.TITLE, 20);
+
+      sheet.getRange(targetRow, map.TITLE).setValue(data.title);
+      sheet.getRange(targetRow, map.TYPE).setValue(data.research_type);
+      sheet.getRange(targetRow, map.JOURNAL).setValue(data.journal);
+      sheet.getRange(targetRow, map.REVIEWER).setValue(data.reviewer);
+      sheet.getRange(targetRow, map.INDEXING).setValue(data.indexing);
+      sheet.getRange(targetRow, map.DATE).setNumberFormat("@").setValue(data.date_published);
+      sheet.getRange(targetRow, map.LINK).setValue(data.drive_link);
+
+      if (isSole) {
+        sheet.getRange(targetRow, map.SCORE).setValue(data.score);
+      } else {
+        sheet.getRange(targetRow, map.CONTRIB).setValue(data.contribution + "%");
+      }
+
+      SpreadsheetApp.flush(); 
+      return createJSONOutput("success", "KRA 2A Updated");
+    }
+    
+    // --------------------------------------------------------
+    // ACTION 6: KRA 2A (Citations)
+    // --------------------------------------------------------
+    else if (data.action === "kra2a_citation") {
+      var sheet = ss.getSheetByName(SHEET_NAME_KRA2A);
+      if (!sheet) return createJSONOutput("error", "Sheet 'Form2_A' not found");
+
+      var scope = data.scope; // "local" or "international"
+      var startRow = (scope === "local") ? 91 : 110;
+      
+      // Find next empty row starting from startRow
+      let targetRow = findFirstEmptyRow(sheet, startRow, 2, 20); // Check Column B (Title)
+
+      sheet.getRange(targetRow, 2).setValue(data.title);            // B: Title
+      sheet.getRange(targetRow, 5).setValue(data.date_published);   // E: Date Published
+      sheet.getRange(targetRow, 6).setValue(data.journal);          // F: Name of Journal
+      sheet.getRange(targetRow, 7).setValue(data.citation_count);   // G: No. of Citation
+      sheet.getRange(targetRow, 8).setValue(data.citation_index);   // H: Citation Index
+      sheet.getRange(targetRow, 9).setValue(data.citation_years);   // I: Year/s Citation
+      sheet.getRange(targetRow, 10).setValue(data.score);           // J: Score
+      sheet.getRange(targetRow, 11).setValue(data.drive_link);      // K: Link to Evidence
+      
+      SpreadsheetApp.flush();
+      return createJSONOutput("success", "KRA 2A Citation Updated");
+    }
+
+    // --------------------------------------------------------
+    // ACTION 7: KRA 2B (Invention - Utility/Industrial)
+    // --------------------------------------------------------
+    else if (data.action === "kra2b_invention") {
+      var sheet = ss.getSheetByName(SHEET_NAME_KRA2B);
+      if (!sheet) return createJSONOutput("error", "Sheet 'Form2_B' not found");
+
+      var isSole = data.is_sole;
+      var startRow = isSole ? 53 : 72;
+      
+      // Find next empty row starting from startRow
+      let targetRow = findFirstEmptyRow(sheet, startRow, 2, 20); // Check Column B (Name of Invention)
+
+      sheet.getRange(targetRow, 2).setValue(data.invention_title);  // B: Name of Invention
+      sheet.getRange(targetRow, 5).setValue(data.patent_type);      // E: Type of Patent
+      sheet.getRange(targetRow, 6).setNumberFormat("@").setValue(data.date_application); // F: Date of Application
+      sheet.getRange(targetRow, 7).setNumberFormat("@").setValue(data.date_granted);     // G: Date Granted
+
+      if (isSole) {
+        sheet.getRange(targetRow, 9).setValue(data.score);          // I: Faculty Score
+        sheet.getRange(targetRow, 10).setValue(data.drive_link);    // J: Link
+      } else {
+        sheet.getRange(targetRow, 9).setValue(data.contribution + "%"); // I: % Contribution
+        sheet.getRange(targetRow, 10).setValue(data.score);             // J: Faculty Score
+        sheet.getRange(targetRow, 11).setValue(data.drive_link);        // K: Link
+      }
+      
+      SpreadsheetApp.flush();
+      return createJSONOutput("success", "KRA 2B Invention Updated");
+    }
+
+    // --------------------------------------------------------
+    // ACTION 8: KRA 3 (Judge/Examiner)
+    // --------------------------------------------------------
+    else if (data.action === "kra3_judge") {
+      var sheet = ss.getSheetByName(SHEET_NAME_KRA3AB);
+      if (!sheet) return createJSONOutput("error", "Sheet 'Form3_A&B' not found");
+
+      // Start Row 61
+      let targetRow = findFirstEmptyRow(sheet, 61, 2, 15); // Check Column B (Title)
+
+      sheet.getRange(targetRow, 2).setValue(data.title);            // B: Title
+      sheet.getRange(targetRow, 6).setValue(data.organizer);        // F: Organizer
+      sheet.getRange(targetRow, 8).setNumberFormat("@").setValue(data.date); // H: Date
+      sheet.getRange(targetRow, 9).setValue(data.nature);           // I: Nature
+      sheet.getRange(targetRow, 10).setValue(data.venue);           // J: Venue
+      sheet.getRange(targetRow, 11).setValue(data.score);           // K: Score
+      sheet.getRange(targetRow, 12).setValue(data.drive_link);      // L: Link
+      
+      SpreadsheetApp.flush();
+      return createJSONOutput("success", "KRA 3 Judge Updated");
+    }
+
+    // --------------------------------------------------------
+    // ACTION 9: KRA 3 (Consultant)
+    // --------------------------------------------------------
+    else if (data.action === "kra3_consultant") {
+      var sheet = ss.getSheetByName(SHEET_NAME_KRA3AB);
+      if (!sheet) return createJSONOutput("error", "Sheet 'Form3_A&B' not found");
+
+      // Start Row 76
+      let targetRow = findFirstEmptyRow(sheet, 76, 2, 15); // Check Column B (Title)
+
+      sheet.getRange(targetRow, 2).setValue(data.title);            // B: Title
+      sheet.getRange(targetRow, 6).setValue(data.organization);     // F: Organization
+      sheet.getRange(targetRow, 7).setNumberFormat("@").setValue(data.start_date); // G: Start
+      sheet.getRange(targetRow, 8).setNumberFormat("@").setValue(data.end_date);   // H: End
+      sheet.getRange(targetRow, 9).setValue(data.scope);            // I: Scope
+      sheet.getRange(targetRow, 10).setValue(data.role);            // J: Role
+      sheet.getRange(targetRow, 11).setValue(data.score);           // K: Score
+      sheet.getRange(targetRow, 12).setValue(data.drive_link);      // L: Link
+      
+      SpreadsheetApp.flush();
+      return createJSONOutput("success", "KRA 3 Consultant Updated");
+    }
+
+    // --------------------------------------------------------
+    // ACTION 10: KRA 3 (Community)
+    // --------------------------------------------------------
+    else if (data.action === "kra3_community") {
+      var sheet = ss.getSheetByName(SHEET_NAME_KRA3AB);
+      if (!sheet) return createJSONOutput("error", "Sheet 'Form3_A&B' not found");
+
+      // Start Row 134
+      let targetRow = findFirstEmptyRow(sheet, 134, 2, 20); // Check Column B (Title)
+
+      sheet.getRange(targetRow, 2).setValue(data.title);            // B: Title
+      sheet.getRange(targetRow, 6).setValue(data.community);        // F: Community
+      sheet.getRange(targetRow, 8).setValue(data.beneficiaries);    // H: Beneficiaries
+      sheet.getRange(targetRow, 9).setValue(data.role);             // I: Role
+      sheet.getRange(targetRow, 10).setNumberFormat("@").setValue(data.date); // J: Date
+      sheet.getRange(targetRow, 11).setValue(data.score);           // K: Score
+      sheet.getRange(targetRow, 12).setValue(data.drive_link);      // L: Link
+      
+      SpreadsheetApp.flush();
+      return createJSONOutput("success", "KRA 3 Community Updated");
+    }
+
+    // --------------------------------------------------------
+    // ACTION 11: KRA 3 (Client Satisfaction)
+    // --------------------------------------------------------
+    else if (data.action === "kra3_client_satisfaction") {
+      var sheet = ss.getSheetByName(SHEET_NAME_KRA3CD);
+      if (!sheet) return createJSONOutput("error", "Sheet '" + SHEET_NAME_KRA3CD + "' not found");
+
+      var semester = data.semester || "1st Semester";
+      var ay = data.academic_year || "2022-2023";
+      var score = data.score;
+      var link = data.drive_link;
+
+      var isFirstSem = semester.toLowerCase().includes("1st") || semester.toLowerCase().includes("first");
+      
+      // Row Mapping
+      var rowMap = {
+        "2019-2020": 18,
+        "2020-2021": 19,
+        "2021-2022": 20,
+        "2022-2023": 21
+      };
+
+      var targetRow = rowMap[ay];
+      if (!targetRow) return createJSONOutput("error", "Invalid Academic Year for KRA 3 Client Satisfaction: " + ay);
+
+      // Column Mapping
+      // 1st Sem: Score -> F (6), Link -> G (7)
+      // 2nd Sem: Score -> H (8), Link -> I (9)
+      var scoreCol = isFirstSem ? 6 : 8;
+      var linkCol = isFirstSem ? 7 : 9;
+
+      sheet.getRange(targetRow, scoreCol).setValue(score);
+      sheet.getRange(targetRow, linkCol).setValue(link);
+
+      SpreadsheetApp.flush();
+      return createJSONOutput("success", "KRA 3 Client Satisfaction Updated");
+    }
+
+    // --------------------------------------------------------
+    // ACTION 12: KRA 3 (Administrative Designation)
+    // --------------------------------------------------------
+    else if (data.action === "kra3_admin_designation") {
+      var sheet = ss.getSheetByName(SHEET_NAME_KRA3CD);
+      if (!sheet) return createJSONOutput("error", "Sheet '" + SHEET_NAME_KRA3CD + "' not found");
+
+      // Designation -> C31
+      // Effective period -> G31
+      // Faculty score -> H31
+      // Link -> I31
+      
+      sheet.getRange("C31").setValue(data.designation);
+      sheet.getRange("G31").setValue(data.period);
+      sheet.getRange("H31").setValue(data.score);
+      sheet.getRange("I31").setValue(data.drive_link);
+
+      SpreadsheetApp.flush();
+      return createJSONOutput("success", "KRA 3 Admin Designation Updated");
+    }
+
+    // --------------------------------------------------------
+    // ACTION 13: KRA 3 (Training / Resource Person)
+    // --------------------------------------------------------
+    else if (data.action === "kra3_training") {
+      var sheet = ss.getSheetByName(SHEET_NAME_KRA3AB);
+      if (!sheet) return createJSONOutput("error", "Sheet 'Form3_A&B' not found");
+
+      // Start Row 104
+      let targetRow = findFirstEmptyRow(sheet, 104, 2, 20); // Check Column B (Title)
+
+      sheet.getRange(targetRow, 2).setValue(data.title);            // B: Title
+      sheet.getRange(targetRow, 5).setValue(data.participation_type); // E: Type
+      sheet.getRange(targetRow, 6).setValue(data.organizer);        // F: Organizer
+      sheet.getRange(targetRow, 7).setNumberFormat("@").setValue(data.start_date); // G: Start
+      sheet.getRange(targetRow, 8).setNumberFormat("@").setValue(data.end_date);   // H: End
+      sheet.getRange(targetRow, 9).setValue(data.scope);            // I: Scope
+      sheet.getRange(targetRow, 10).setValue(data.hours);           // J: Hours
+      sheet.getRange(targetRow, 11).setValue(data.score);           // K: Score
+      sheet.getRange(targetRow, 12).setValue(data.drive_link);      // L: Link
+      
+      SpreadsheetApp.flush();
+      return createJSONOutput("success", "KRA 3 Training Updated");
+    }
+
+    // --------------------------------------------------------
+    // ACTION 14: KRA 4 (Participation)
+    // --------------------------------------------------------
+    else if (data.action === "kra4_participation") {
+      var sheet = ss.getSheetByName(SHEET_NAME_KRA4);
+      if (!sheet) return createJSONOutput("error", "Sheet '" + SHEET_NAME_KRA4 + "' not found");
+
+      // Start Row 44
+      let targetRow = findFirstEmptyRow(sheet, 44, 2, 20); // Check Column B (Name)
+
+      sheet.getRange(targetRow, 2).setValue(data.name_of_conference); // B: Name
+      sheet.getRange(targetRow, 5).setValue(data.scope);              // E: Scope
+      sheet.getRange(targetRow, 6).setValue(data.organizer);          // F: Organizer
+      sheet.getRange(targetRow, 7).setNumberFormat("@").setValue(data.date_of_activity); // G: Date
+      sheet.getRange(targetRow, 8).setValue(data.score);              // H: Score
+      sheet.getRange(targetRow, 9).setValue(data.drive_link);         // I: Link
+      
+      SpreadsheetApp.flush();
+      return createJSONOutput("success", "KRA 4 Participation Updated");
+    }
+
+    // --------------------------------------------------------
+    // ACTION 15: KRA 4 (Paper Presentation)
+    // --------------------------------------------------------
+    else if (data.action === "kra4_paper_presentation") {
+      var sheet = ss.getSheetByName(SHEET_NAME_KRA4);
+      if (!sheet) return createJSONOutput("error", "Sheet '" + SHEET_NAME_KRA4 + "' not found");
+
+      // Start Row 68
+      let targetRow = findFirstEmptyRow(sheet, 68, 2, 20); // Check Column B (Title)
+
+      sheet.getRange(targetRow, 2).setValue(data.title_of_paper);     // B: Title of Paper
+      sheet.getRange(targetRow, 5).setValue(data.scope);              // E: Scope
+      sheet.getRange(targetRow, 6).setValue(data.title_of_conference);// F: Title of Conference
+      sheet.getRange(targetRow, 7).setValue(data.conference_organizer);// G: Organizer
+      sheet.getRange(targetRow, 8).setNumberFormat("@").setValue(data.date_presented); // H: Date
+      sheet.getRange(targetRow, 9).setValue(data.score);              // I: Score
+      sheet.getRange(targetRow, 10).setValue(data.drive_link);        // J: Link
+      
+      SpreadsheetApp.flush();
+      return createJSONOutput("success", "KRA 4 Paper Presentation Updated");
+    }
+
+    // --------------------------------------------------------
+    // ACTION 16: KRA 4 (Award)
+    // --------------------------------------------------------
+    else if (data.action === "kra4_award") {
+      var sheet = ss.getSheetByName(SHEET_NAME_KRA4D);
+      if (!sheet) return createJSONOutput("error", "Sheet '" + SHEET_NAME_KRA4D + "' not found");
+
+      // Start Row 12
+      let targetRow = findFirstEmptyRow(sheet, 12, 2, 20); // Check Column B (Name of Award)
+
+      // Columns:
+      // B12 = Name of the Award (2)
+      // D12 = Scope (4)
+      // E12 = Award-Giving Body (5)
+      // F12 = Date (6)
+      // G12 = Venue (7)
+      // H12 = Score (8)
+      // I12 = Link (9)
+
+      sheet.getRange(targetRow, 2).setValue(data.name_of_award);
+      sheet.getRange(targetRow, 4).setValue(data.scope);
+      sheet.getRange(targetRow, 5).setValue(data.awarding_body);
+      sheet.getRange(targetRow, 6).setNumberFormat("@").setValue(data.date_given);
+      sheet.getRange(targetRow, 7).setValue(data.venue);
+      sheet.getRange(targetRow, 8).setValue(data.score);
+      sheet.getRange(targetRow, 9).setValue(data.drive_link);
+      
+      SpreadsheetApp.flush();
+      return createJSONOutput("success", "KRA 4 Award Updated");
+    }
+
+    else {
+      return createJSONOutput("error", "Unknown Action: " + data.action);
+    }
+
+  } catch (err) {
+    return createJSONOutput("error", err.toString());
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// --- HELPER: ROW FINDER ---
+function findFirstEmptyRow(sheet, startRow, columnToCheck, safetyLimit) {
+  let targetRow = startRow;
+  let maxRow = startRow + safetyLimit;
+
+  while (targetRow < maxRow) {
+    let val = sheet.getRange(targetRow, columnToCheck).getValue();
+    if (val === "") return targetRow;
+    if (String(val).toUpperCase().includes("TOTAL")) {
+      sheet.insertRowBefore(targetRow);
+      return targetRow;
+    }
+    targetRow++;
+  }
+  return targetRow;
+}
+
+function createJSONOutput(status, message) {
+  return ContentService.createTextOutput(JSON.stringify({ "status": status, "message": message }))
+    .setMimeType(ContentService.MimeType.JSON);
+}

@@ -187,7 +187,7 @@ const Upload = () => {
                                     value={link}
                                     onChange={(e) => updateLink(index, e.target.value)}
                                     onBlur={(e) => handleBlur(index, e.target.value)}
-                                    className={`form-control border-0 bg-light py-3 ${linkPreviews[index]?.status === 'error' ? 'is-invalid' : ''}`}
+                                    className={`form-control border-0 bg-light py-3 ${linkPreviews[index]?.status === 'error' ? 'is-invalid' : ''} overflow-hidden`}
                                     required={driveLinks.length === 1 && index === 0}
                                     disabled={linkPreviews[index]?.status === 'loading'}
                                 />
