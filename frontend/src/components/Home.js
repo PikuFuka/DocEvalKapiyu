@@ -9,23 +9,35 @@ const Home = () => {
   const { isAuthenticated, user } = useAuth();
 
   useEffect(() => {
-    AOS.init({ duration: 1000, once: true });
+    AOS.init({ 
+      duration: 1000, 
+      once: false,
+      mirror: true,
+      easing: "ease-out-cubic",
+    });
   }, []);
 
   return (
-    <div className="home-page bg-white">
+    <div className="home-page overflow-hidden" 
+      style={{ 
+        background: 'radial-gradient(circle at top right, #f8faff 0%, #ffffff 40%, #f0f7ff 100%)',
+        minHeight: '100vh'
+      }}
+    >
       {/* Hero Section - Modern & Colorful */}
       <section className="home-hero d-flex align-items-center position-relative overflow-hidden"
         style={{
           minHeight: '90vh',
-          background: 'linear-gradient(135deg, #f0f7ff 0%, #ffffff 100%)',
+          background: 'transparent',
         }}
       >
         {/* Abstract Shapes for Color */}
-        <div className="position-absolute top-0 end-0 rounded-circle bg-primary opacity-10 blur-3xl" 
-             style={{ width: '600px', height: '600px', transform: 'translate(30%, -30%)', filter: 'blur(80px)' }}></div>
-        <div className="position-absolute bottom-0 start-0 rounded-circle bg-info opacity-10 blur-3xl" 
-             style={{ width: '400px', height: '400px', transform: 'translate(-30%, 30%)', filter: 'blur(60px)' }}></div>
+        <div className="position-absolute top-0 end-0 rounded-circle bg-primary opacity-10 blur-3xl animate-blob" 
+             style={{ width: '600px', height: '600px', transform: 'translate(30%, -30%)', filter: 'blur(100px)' }}></div>
+        <div className="position-absolute bottom-0 start-0 rounded-circle bg-info opacity-10 blur-3xl animate-blob animation-delay-2000" 
+             style={{ width: '400px', height: '400px', transform: 'translate(-30%, 30%)', filter: 'blur(80px)' }}></div>
+        <div className="position-absolute top-50 start-50 rounded-circle bg-purple opacity-5 blur-3xl animate-blob animation-delay-4000" 
+             style={{ width: '500px', height: '500px', transform: 'translate(-50%, -50%)', filter: 'blur(120px)' }}></div>
 
         <div className="container position-relative z-1">
           <div className="row align-items-center gy-5">
@@ -36,7 +48,7 @@ const Home = () => {
                 transition={{ duration: 0.8 }}
               >
                 <div className="d-inline-block mb-4">
-                  <span className="badge bg-white text-primary px-3 py-2 rounded-pill shadow-sm border border-primary border-opacity-10 fw-bold">
+                  <span className="badge bg-white text-primary px-3 py-2 rounded-pill shadow-sm fw-bold">
                     <i className="bi bi-stars me-2"></i>AI-Powered Evaluation
                   </span>
                 </div>
@@ -65,7 +77,7 @@ const Home = () => {
                       </Link>
                       <Link
                         to="/login"
-                        className="btn btn-white btn-lg px-5 py-3 rounded-pill fw-bold shadow-sm border hover-scale"
+                        className="btn btn-white btn-lg px-5 py-3 rounded-pill fw-bold shadow-sm hover-scale"
                       >
                         Sign In
                       </Link>
@@ -91,7 +103,7 @@ const Home = () => {
                 className="position-relative w-100"
                 style={{ maxWidth: '550px' }}
               >
-                <div className="position-relative z-2 bg-white rounded-4 shadow-lg p-2 border">
+                <div className="position-relative z-2 bg-white rounded-4 shadow-lg p-2">
                   {/* Suggestion: Use a high-quality screenshot of the actual dashboard or a 3D illustration of documents being scanned */}
                   <img 
                     src="/images/dashburd.png" 
@@ -106,7 +118,7 @@ const Home = () => {
                   <motion.div 
                     animate={{ y: [0, -10, 0] }}
                     transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                    className="position-absolute top-0 end-0 translate-middle-y bg-white p-3 rounded-4 shadow-lg border d-none d-md-block"
+                    className="position-absolute top-0 end-0 translate-middle-y bg-white p-3 rounded-4 shadow-lg d-none d-md-block"
                     style={{ marginRight: '-20px', marginTop: '40px' }}
                   >
                     <div className="d-flex align-items-center gap-3">
@@ -123,7 +135,7 @@ const Home = () => {
                   <motion.div 
                     animate={{ y: [0, 10, 0] }}
                     transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-                    className="position-absolute bottom-0 start-0 translate-middle-y bg-white p-3 rounded-4 shadow-lg border d-none d-md-block"
+                    className="position-absolute bottom-0 start-0 translate-middle-y bg-white p-3 rounded-4 shadow-lg d-none d-md-block"
                     style={{ marginLeft: '-20px', marginBottom: '40px' }}
                   >
                     <div className="d-flex align-items-center gap-3">
@@ -147,7 +159,7 @@ const Home = () => {
       </section>
 
       {/* Features Section - Colorful Cards */}
-      <section className="py-5 bg-white position-relative">
+      <section className="py-5 position-relative">
         <div className="container py-5">
           <div className="text-center mb-5 mx-auto" style={{ maxWidth: '700px' }}>
             <h6 className="text-primary fw-bold text-uppercase tracking-wide">Why Choose Us</h6>
@@ -163,12 +175,12 @@ const Home = () => {
               { title: 'Analytics', desc: 'Visual insights and comprehensive reports to track performance trends over time.', icon: 'bi-graph-up', color: 'warning' },
             ].map((feature, i) => (
               <div className="col-md-6 col-lg-3" key={i} data-aos="fade-up" data-aos-delay={i * 100}>
-                <div className="card h-100 border-0 bg-light rounded-4 p-4 hover-lift transition-all">
+                <div className="card h-100 border-0 bg-white bg-opacity-60 backdrop-blur rounded-4 p-4 hover-lift transition-all shadow-sm">
                   <div className={`mb-4 d-inline-flex align-items-center justify-content-center rounded-3 bg-${feature.color} bg-opacity-10 text-${feature.color}`} style={{ width: '60px', height: '60px' }}>
                     <i className={`bi ${feature.icon} fs-3`}></i>
                   </div>
                   <h5 className="fw-bold mb-3">{feature.title}</h5>
-                  <p className="text-muted mb-0">{feature.desc}</p>
+                  <p className="text-muted mb-0 lh-base">{feature.desc}</p>
                 </div>
               </div>
             ))}
@@ -177,7 +189,7 @@ const Home = () => {
       </section>
 
       {/* How It Works - Centered & Clean */}
-      <section className="py-5 bg-light">
+      <section className="py-5">
         <div className="container py-5">
           <div className="text-center mb-5">
             <h2 className="fw-bold display-6">How It Works</h2>
@@ -192,8 +204,7 @@ const Home = () => {
               { step: '4', title: 'Result', desc: 'View detailed report', icon: 'bi-file-earmark-bar-graph' },
             ].map((process, i) => (
               <div className="col-md-6 col-lg-3" key={i} data-aos="fade-up" data-aos-delay={i * 100}>
-                <div className="card border-0 shadow-sm rounded-4 p-4 text-center h-100 position-relative overflow-hidden hover-lift">
-                  <div className="position-absolute top-0 start-0 w-100 h-100 bg-white" style={{ zIndex: 0 }}></div>
+                <div className="card border-0 shadow-sm rounded-4 p-4 text-center h-100 position-relative overflow-hidden hover-lift bg-white bg-opacity-70 backdrop-blur">
                   <div className="position-relative z-1">
                     <div className="mb-3 mx-auto d-flex align-items-center justify-content-center rounded-circle bg-primary text-white fw-bold shadow-sm" 
                          style={{width: '60px', height: '60px', fontSize: '1.5rem'}}>
@@ -210,7 +221,7 @@ const Home = () => {
       </section>
 
       {/* Footer - Centered & Polished */}
-      <footer className="py-5 bg-white border-top">
+      <footer className="py-5 mt-5">
         <div className="container">
           <div className="row gy-4 justify-content-center text-center">
             <div className="col-lg-8">
@@ -235,7 +246,7 @@ const Home = () => {
               </div>
             </div>
           </div>
-          <div className="border-top pt-4 text-center">
+          <div className="pt-4 text-center">
             <p className="text-muted small mb-0">&copy; {new Date().getFullYear()} DocEvalKapiyu. All rights reserved.</p>
           </div>
         </div>
@@ -243,12 +254,37 @@ const Home = () => {
 
       <style jsx>{`
         .hover-scale:hover {
+          tme-page {
+          scroll-behavior: smooth;
+        }
+        .backdrop-blur {
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+        }
+        .animate-blob {
+          animation: blob 7s infinite;
+        }
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+        .animation-delay-4000 {
+          animation-delay: 4s;
+        }
+        @keyframes blob {
+          0% { transform: translate(0px, 0px) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.9); }
+          100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .hover-scale:hover {
           transform: scale(1.05);
+        }
+        .hover-lift {
+          transition: all 0.3s ease;
         }
         .hover-lift:hover {
           transform: translateY(-10px);
-          box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important;
-        }
+          box-shadow: 0 20px 40px rgba(0,0,0,0.08
         .hover-primary:hover {
           color: var(--bs-primary) !important;
         }
