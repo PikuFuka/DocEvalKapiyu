@@ -7,9 +7,9 @@ import LoadingOverlay from './LoadingOverlay';
 const FacultyDashboard = () => {
   const [uploads, setUploads] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({ total: 0, completed: 0, pending: 0, processing: 0 });
+  const [stats, setStats] = useState({ total: 0, completed: 0, processing: 0, forReview: 0 });
   const [showAll, setShowAll] = useState(false);
-  const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'completed', 'processing'
+  const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'completed', 'review', 'processing'
   const [viewMode, setViewMode] = useState('card'); // 'card' or 'list'
 
   useEffect(() => {
@@ -31,13 +31,16 @@ const FacultyDashboard = () => {
 
       const total = data.length;
       const completed = data.filter(u => u.status === 'completed').length;
-      const processing = data.filter(u => u.status === 'processing' || u.status === 'pending').length;
+      const forReview = data.filter(u => u.status === 'for_review').length;
+      const processing = data.filter(
+        u => u.status === 'processing' || u.status === 'pending'
+      ).length;
 
       // Sort by created_at descending
       const sortedData = [...data].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
       setUploads(sortedData);
-      setStats({ total, completed, processing });
+      setStats({ total, completed, processing, forReview });
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
     } finally {
@@ -50,7 +53,10 @@ const FacultyDashboard = () => {
   const filteredUploads = uploads.filter(upload => {
     if (filterStatus === 'all') return true;
     if (filterStatus === 'completed') return upload.status === 'completed';
-    if (filterStatus === 'processing') return upload.status === 'processing' || upload.status === 'pending';
+    if (filterStatus === 'review') return upload.status === 'for_review';
+    if (filterStatus === 'processing') {
+      return upload.status === 'processing' || upload.status === 'pending';
+    }
     return true;
   });
 
@@ -74,7 +80,13 @@ const FacultyDashboard = () => {
             <h1 className="fw-bold text-dark mb-1" style={{ letterSpacing: '-1px' }}>Faculty Dashboard</h1>
             <p className="text-secondary mb-0">Track your document evaluations and performance metrics.</p>
           </div>
-          <div className="d-none d-md-block">
+          <div className="d-none d-md-flex gap-2">
+            {stats.forReview > 0 && (
+              <a href="/classification-review" className="btn btn-warning rounded-pill px-4 py-2 fw-bold shadow-sm d-flex align-items-center gap-2">
+                <i className="bi bi-check2-square"></i>
+                <span>Review Queue ({stats.forReview})</span>
+              </a>
+            )}
             <a href="/upload" className="btn btn-primary rounded-pill px-4 py-2 fw-bold shadow-sm d-flex align-items-center gap-2">
                 <i className="bi bi-plus-lg"></i>
                 <span>New Upload</span>
@@ -92,9 +104,10 @@ const FacultyDashboard = () => {
           {[
             { title: 'Total Uploads', value: stats.total, icon: 'bi-cloud-upload', color: 'primary', bg: 'linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%)', text: '#3730a3' },
             { title: 'Completed', value: stats.completed, icon: 'bi-check-circle', color: 'success', bg: 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)', text: '#166534' },
+            { title: 'For Review', value: stats.forReview, icon: 'bi-check2-square', color: 'warning', bg: 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)', text: '#9f1239' },
             { title: 'Processing', value: stats.processing, icon: 'bi-hourglass-split', color: 'warning', bg: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', text: '#92400e' }
           ].map((stat, idx) => (
-            <div key={idx} className="col-md-4">
+            <div key={idx} className="col-12 col-sm-6 col-lg-3">
               <motion.div 
                 className="card border-0 shadow-sm rounded-4 h-100 overflow-hidden position-relative"
                 whileHover={{ y: -5, boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}
@@ -153,7 +166,7 @@ const FacultyDashboard = () => {
                 </div>
 
                 <div className="d-none d-md-flex gap-2">
-                {['all', 'completed', 'processing'].map(status => (
+                {['all', 'completed', 'review', 'processing'].map(status => (
                     <button
                         key={status}
                         onClick={() => setFilterStatus(status)}
@@ -168,6 +181,17 @@ const FacultyDashboard = () => {
           </div>
 
           <div className="card-body p-4">
+
+            {stats.forReview > 0 && (
+              <div className="alert alert-warning border-0 rounded-4 mb-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                <div className="small text-dark mb-0">
+                  <strong>{stats.forReview}</strong> classification {stats.forReview === 1 ? 'result is' : 'results are'} waiting for confirmation.
+                </div>
+                <a href="/classification-review" className="btn btn-sm btn-dark rounded-pill px-3 fw-bold">
+                  Open Review Page
+                </a>
+              </div>
+            )}
             
             {/* AI Disclaimer */}
             {uploads.length > 0 && (
@@ -218,7 +242,7 @@ const FacultyDashboard = () => {
                             viewport={{ once: true }}
                             transition={{ duration: 0.3 }}
                         >
-                            <UploadCard upload={upload} />
+                          <UploadCard upload={upload} onUploadUpdated={fetchDashboardData} showInlineReview={false} />
                         </motion.div>
                         ))}
                     </div>
@@ -262,10 +286,12 @@ const FacultyDashboard = () => {
                                         <td>
                                             <span className={`badge rounded-pill px-3 py-2 ${
                                                 upload.status === 'completed' ? 'bg-success bg-opacity-10 text-success' :
+                                            upload.status === 'for_review' ? 'bg-info bg-opacity-10 text-info' :
                                                 upload.status === 'processing' ? 'bg-warning bg-opacity-10 text-warning' :
                                                 'bg-secondary bg-opacity-10 text-secondary'
                                             }`}>
                                                 {upload.status === 'completed' ? <i className="bi bi-check-circle-fill me-1"></i> : 
+                                             upload.status === 'for_review' ? <i className="bi bi-eye-fill me-1"></i> :
                                                  upload.status === 'processing' ? <i className="bi bi-arrow-repeat me-1 spin"></i> : 
                                                  <i className="bi bi-clock-fill me-1"></i>}
                                                 {upload.status}

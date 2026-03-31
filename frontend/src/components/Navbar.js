@@ -13,10 +13,13 @@ const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
+  // Don't show Navbar on Login or Register pages
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/faculty-register';
+
   const isActive = (path) => location.pathname === path;
 
   useEffect(() => {
-    import('bootstrap/dist/js/bootstrap.bundle.min.js');
+    if (isAuthPage) return; // Exit if on auth page
     
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
@@ -54,6 +57,8 @@ const Navbar = () => {
     if (user.first_name) return user.first_name[0].toUpperCase();
     return user.email?.[0]?.toUpperCase() || 'U';
   };
+
+  if (isAuthPage) return null;
 
   return (
     <motion.nav 
@@ -158,6 +163,19 @@ const Navbar = () => {
                   >
                     Dashboard
                     {isActive('/faculty-dashboard') && <span className="nav-indicator"></span>}
+                  </Link>
+                </li>
+                <li className="nav-item">
+                  <Link
+                    to="/classification-review"
+                    className={`nav-link px-3 ${isActive('/classification-review') ? 'active' : ''}`}
+                    style={{
+                      color: isActive('/classification-review') ? '#006633' : '#555',
+                      fontWeight: isActive('/classification-review') ? '600' : '500'
+                    }}
+                  >
+                    Review
+                    {isActive('/classification-review') && <span className="nav-indicator"></span>}
                   </Link>
                 </li>
                 <li className="nav-item">

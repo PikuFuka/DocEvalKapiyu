@@ -40,7 +40,8 @@ class DocumentUploadSerializer(serializers.ModelSerializer):
             'equivalent_percentage', 'total_score',
             'primary_kra', 'kra_confidence', 'criteria', 'sub_criteria', 'explanation',
             'error_message', 'page_count', 'extracted_text_preview', 'source_filename',
-            'extracted_json', # Add this line to include the field in the API response
+            'classification_time', 'total_processing_time',
+            'extracted_json', 
             'success'
         ]
         read_only_fields = [

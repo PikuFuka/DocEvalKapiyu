@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import api from '../services/api';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { useNotification } from './Notification';
 
 const Upload = () => {
   const [driveLinks, setDriveLinks] = useState(['']);
   const [linkPreviews, setLinkPreviews] = useState({}); // Store previews by index
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
   const { notify } = useNotification();
 
   const addLinkField = () => {
@@ -83,16 +85,19 @@ const Upload = () => {
     }
 
     try {
-      notify.info('Starting evaluation... Please wait.');
+      notify.info('Starting classification... Please wait.');
       const promises = nonEmptyLinks.map(link =>
         api.post('/uploads/', { google_drive_link: link.trim() })
       );
 
       await Promise.all(promises);
 
-      notify.success(`Successfully submitted ${nonEmptyLinks.length} document link(s)! They are now being processed.`);
+      notify.success(
+        `Successfully submitted ${nonEmptyLinks.length} document link(s). Redirecting to classification review.`
+      );
       setDriveLinks(['']);
       setLinkPreviews({});
+      navigate('/classification-review');
     } catch (error) {
       console.error("Upload error:", error);
       const errorMsg =
@@ -154,22 +159,22 @@ const Upload = () => {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.1 * index }}
               >
-                <div className="d-flex flex-column flex-md-row align-items-stretch gap-2">
-                    <div className="flex-grow-1 position-relative">
-                        <div className="input-group shadow-sm rounded-3 overflow-hidden">
+              <div className="d-flex flex-column flex-md-row align-items-stretch gap-2 upload-link-row">
+                <div className="flex-grow-1 position-relative upload-link-field">
+                  <div className="input-group shadow-sm rounded-3 overflow-hidden upload-link-input-group">
                             <span className="input-group-text border-0 bg-light text-muted px-3">
                                 <i className="bi bi-link-45deg fs-5"></i>
                             </span>
                             
                             {linkPreviews[index]?.status === 'success' ? (
-                                <div className="form-control border-0 bg-light py-3 d-flex align-items-center justify-content-between">
-                                    <div className="d-flex align-items-center text-success overflow-hidden">
-                                        <i className={`bi ${linkPreviews[index].icon || 'bi-check-circle'} me-2`}></i>
-                                        <span className="fw-medium text-truncate">{linkPreviews[index].name}</span>
+                      <div className="form-control border-0 bg-light py-3 link-preview-shell">
+                        <div className="link-preview-main text-success">
+                          <i className={`bi ${linkPreviews[index].icon || 'bi-check-circle'} link-preview-icon`}></i>
+                          <span className="fw-medium link-preview-name" title={linkPreviews[index].name}>{linkPreviews[index].name}</span>
                                     </div>
                                     <button 
                                         type="button" 
-                                        className="btn btn-sm btn-link text-muted p-0 ms-2"
+                          className="btn btn-sm btn-link text-muted p-0 ms-2 link-preview-edit"
                                         onClick={() => {
                                             const newPreviews = { ...linkPreviews };
                                             delete newPreviews[index];
@@ -187,7 +192,7 @@ const Upload = () => {
                                     value={link}
                                     onChange={(e) => updateLink(index, e.target.value)}
                                     onBlur={(e) => handleBlur(index, e.target.value)}
-                                    className={`form-control border-0 bg-light py-3 ${linkPreviews[index]?.status === 'error' ? 'is-invalid' : ''} overflow-hidden`}
+                                  className={`form-control border-0 bg-light py-3 upload-link-input ${linkPreviews[index]?.status === 'error' ? 'is-invalid' : ''} overflow-hidden`}
                                     required={driveLinks.length === 1 && index === 0}
                                     disabled={linkPreviews[index]?.status === 'loading'}
                                 />
@@ -245,11 +250,11 @@ const Upload = () => {
                 {loading ? (
                   <span className="d-flex align-items-center gap-2">
                     <span className="spinner-border spinner-border-sm" role="status"></span>
-                    Processing...
+                    Classifying...
                   </span>
                 ) : (
                   <>
-                    <i className="bi bi-rocket-takeoff-fill me-2"></i>Start Evaluation
+                    <i className="bi bi-rocket-takeoff-fill me-2"></i>Start Classification
                   </>
                 )}
               </motion.button>

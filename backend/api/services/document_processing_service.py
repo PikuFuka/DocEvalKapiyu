@@ -2,8 +2,8 @@ import os
 import uuid
 import io
 import logging
-import json
 import re
+import time
 from datetime import datetime
 from PIL import Image, ImageFilter, ImageOps
 from django.conf import settings
@@ -1068,7 +1068,31 @@ def normalize_ay_for_sheet(raw_ay):
     except Exception:
         return "2022-2023"
 
-def process_document_upload(upload):
+
+def _merge_classification_result(base_result, classification_override=None):
+    if not classification_override:
+        return base_result
+
+    merged = dict(base_result or {})
+    field_map = {
+        "primary_kra": "primary_kra",
+        "criteria": "criterion",
+        "criterion": "criterion",
+        "sub_criteria": "sub_criterion",
+        "sub_criterion": "sub_criterion",
+        "confidence": "confidence",
+    }
+
+    for source_key, target_key in field_map.items():
+        value = classification_override.get(source_key)
+        if value is not None and str(value).strip() != "":
+            merged[target_key] = value if target_key == "confidence" else str(value).strip()
+
+    return merged
+
+
+def process_document_upload(upload, classification_only=False, classification_override=None):
+    start_time = time.time()
     try:
         file_info_list = extract_text_from_drive(upload.google_drive_link)
         
@@ -1132,6 +1156,7 @@ def process_document_upload(upload):
 
         print(f"\n--- CLASSIFYING SINGLE FILE: {priority_file['file_name']} ---")
         classification_result = classify_document(priority_file['text'])
+        classification_result = _merge_classification_result(classification_result, classification_override)
 
         evidence_type = map_classification_to_evidence_type(classification_result)
         print(f"Determined Evidence Type: {evidence_type}")
@@ -1147,6 +1172,37 @@ def process_document_upload(upload):
             combined_text += f['text']
             total_pages += f['page_count']
             file_names.append(f['file_name'])
+
+        if classification_only:
+            classification_duration = time.time() - start_time
+            upload.status = "for_review"
+            upload.page_count = total_pages
+            upload.primary_kra = classification_result.get("primary_kra")
+            upload.kra_confidence = classification_result.get("confidence")
+            upload.criteria = classification_result.get("criterion")
+            upload.sub_criteria = classification_result.get("sub_criterion")
+            upload.total_score = None
+            upload.equivalent_percentage = None
+            upload.error_message = None
+            upload.classification_time = classification_duration
+            upload.explanation = (
+                f"Classified using '{priority_file['file_name']}'. "
+                f"Processing took {classification_duration:.2f}s. "
+                "Please review the classification and confirm before extraction and sheet export."
+            )
+            upload.extracted_text_preview = combined_text[:500] + "..." if combined_text else ""
+            upload.extracted_json = {
+                "stage": "classification_review",
+                "file_count": len(sorted_files),
+                "file_names": file_names,
+                "classification": classification_result,
+                "evidence_type": evidence_type,
+                "total_pages": total_pages,
+                "processing_time": f"{classification_duration:.2f}s"
+            }
+            upload.save()
+            print(f"Classification stage complete ({classification_duration:.2f}s). Waiting for user confirmation.")
+            return True
 
         extracted_data = []
         upload.total_score = 0.0 
@@ -1195,13 +1251,19 @@ def process_document_upload(upload):
                 traceback.print_exc()
 
         upload.status = "completed"
+        total_duration = time.time() - start_time
+        upload.total_processing_time = total_duration
         upload.page_count = total_pages
         upload.primary_kra = classification_result.get("primary_kra")
         upload.kra_confidence = classification_result.get("confidence")
         upload.criteria = classification_result.get("criterion")
         upload.sub_criteria = classification_result.get("sub_criterion")
         
-        upload.explanation = f"Classified using '{priority_file['file_name']}'. Extracted data from {len(sorted_files)} files."
+        upload.explanation = (
+            f"Classified using '{priority_file['file_name']}'. "
+            f"Total processing took {total_duration:.2f}s. "
+            f"Extracted data from {len(sorted_files)} files."
+        )
         upload.extracted_text_preview = combined_text[:500] + "..."
         upload.error_message = None
 
@@ -1216,10 +1278,10 @@ def process_document_upload(upload):
             'text_preview': combined_text[:200]
         }
         
-        upload.extracted_json = json.dumps({
+        upload.extracted_json = {
             'file_count': len(sorted_files),
             'files': [unified_result]
-        }, indent=2)
+        }
         
         upload.save()
 

@@ -9,7 +9,8 @@ from .auth_views import (
 from .upload_views import (
     DocumentUploadView,
     user_uploads_list,
-    peek_drive_link
+    peek_drive_link,
+    confirm_upload_classification
 )
 from .admin_views import (
     admin_dashboard_stats,
@@ -30,6 +31,8 @@ __all__ = [
     'FacultyProfileView',
     'DocumentUploadView',
     'user_uploads_list',
+    'peek_drive_link',
+    'confirm_upload_classification',
     'admin_dashboard_stats',
     'admin_users_list',
     'admin_user_documents',

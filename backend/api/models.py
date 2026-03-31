@@ -60,6 +60,7 @@ class DocumentUpload(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
         ('processing', 'Processing'),
+        ('for_review', 'For Review'),
         ('completed', 'Completed'),
         ('failed', 'Failed'),
     ]
@@ -79,6 +80,8 @@ class DocumentUpload(models.Model):
     sub_criteria = models.CharField(max_length=255, blank=True, null=True)
     explanation = models.TextField(blank=True, null=True)
     error_message = models.TextField(blank=True, null=True)
+    classification_time = models.FloatField(blank=True, null=True, help_text="Time taken for classification in seconds")
+    total_processing_time = models.FloatField(blank=True, null=True, help_text="Total processing time including extraction in seconds")
     
     # Extraction details
     page_count = models.IntegerField(blank=True, null=True)

@@ -52,43 +52,41 @@ const Login = () => {
   };
 
   return (
-    <div className="auth-page min-vh-100 d-flex align-items-center justify-content-center py-5 position-relative" style={{ background: '#f8f9fa' }}>
-      {/* Background Shapes */}
-      <div className="position-absolute top-0 start-0 w-100 h-100 overflow-hidden" style={{ zIndex: 0 }}>
-        <div className="position-absolute top-0 end-0 bg-primary opacity-10 rounded-circle blur-3xl" style={{ width: '600px', height: '600px', transform: 'translate(30%, -30%)' }}></div>
-        <div className="position-absolute bottom-0 start-0 bg-info opacity-10 rounded-circle blur-3xl" style={{ width: '500px', height: '500px', transform: 'translate(-30%, 30%)' }}></div>
+    <div className="login-split-container">
+      <div className="login-left-section login-visual-side">
+        {/* Visual side only holds the background image now */}
       </div>
 
-      <motion.div
-        className="card border-0 shadow-lg rounded-4 overflow-hidden bg-white position-relative z-1"
-        style={{ width: '100%', maxWidth: '450px' }}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <div className="card-header bg-white border-0 pt-5 pb-0 text-center">
-          <div 
-            className="mx-auto mb-3 d-flex align-items-center justify-content-center bg-primary bg-gradient text-white rounded-circle shadow-sm"
-            style={{ width: '64px', height: '64px' }}
-          >
-            <i className="bi bi-person-fill fs-2"></i>
+      <div className="login-right-section login-form-side">
+        <Link to="/" className="login-back-btn">
+          <i className="bi bi-arrow-left me-2"></i>
+          Back to Home
+        </Link>
+        <motion.div
+          className="login-auth-card"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <div className="login-header text-center mb-4">
+            <div className="login-logo-pnl mx-auto mb-3">
+              <i className="bi bi-shield-lock-fill"></i>
+            </div>
+            <h2 className="fw-bold text-dark">Welcome Back</h2>
+            <p className="text-muted small">Enter your credentials to access your dashboard</p>
           </div>
-          <h3 className="fw-bold text-dark mb-3">Welcome Back</h3>
-          <p className="text-muted mb-4">Sign in to your account</p>
-        </div>
 
-        <div className="card-body p-4 p-md-5 pt-3">
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} className="login-form">
             <div className="mb-3">
-              <label className="form-label small fw-bold text-muted text-uppercase">Email Address</label>
-              <div className="input-group">
-                <span className="input-group-text bg-light border-end-0 text-muted"><i className="bi bi-envelope"></i></span>
+              <label className="form-label-custom">Email Address</label>
+              <div className="login-input-wrapper">
+                <i className="bi bi-envelope login-input-icon"></i>
                 <input
                   type="email"
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className="form-control bg-light border-start-0 py-2"
+                  className="login-input-field"
                   placeholder="name@example.com"
                   required
                 />
@@ -96,17 +94,17 @@ const Login = () => {
             </div>
 
             <div className="mb-4">
-              <div className="d-flex justify-content-between align-items-center mb-1">
-                <label className="form-label small fw-bold text-muted text-uppercase mb-0">Password</label>
+              <div className="d-flex justify-content-between align-items-center mb-2">
+                <label className="form-label-custom mb-0">Password</label>
               </div>
-              <div className="input-group">
-                <span className="input-group-text bg-light border-end-0 text-muted"><i className="bi bi-lock"></i></span>
+              <div className="login-input-wrapper">
+                <i className="bi bi-lock login-input-icon"></i>
                 <input
                   type="password"
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  className="form-control bg-light border-start-0 py-2"
+                  className="login-input-field"
                   placeholder="••••••••"
                   required
                 />
@@ -115,25 +113,27 @@ const Login = () => {
 
             <button
               type="submit"
-              className="btn btn-primary w-100 py-2 fw-bold rounded-3 shadow-sm mb-3"
+              className="login-submit-btn w-100 mb-4"
               disabled={loading}
             >
               {loading ? (
-                <><span className="spinner-border spinner-border-sm me-2"></span> Signing in...</>
+                <>
+                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                  Signing in...
+                </>
               ) : (
                 'Sign In'
               )}
             </button>
           </form>
 
-          <div className="text-center mt-4 pt-3 border-top">
-            <p className="text-muted small mb-0">
-              Don't have an account?{' '}
-              <Link to="/faculty-register" className="text-primary fw-bold text-decoration-none">Create account</Link>
+          <div className="text-center mt-2 pt-3 border-top">
+            <p className="mb-0 text-muted small">
+              Don't have an account? <Link to="/faculty-register" className="register-link fw-bold">Create Account</Link>
             </p>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
     </div>
   );
 };

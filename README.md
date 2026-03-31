@@ -152,6 +152,21 @@ npm install
 npm start
 ```
 
+### 4. One-Command Startup (Windows)
+From the project root, run:
+
+```bat
+start-all.bat
+```
+
+This starts both:
+*   Django backend (`http://localhost:8000`)
+*   React frontend (`http://localhost:3000`)
+
+It runs in a single Command Prompt window.
+
+It also automatically creates/updates `THESIS_2026 Start.lnk` on your Desktop and opens `http://localhost:3000` in your browser.
+
 ---
 
 ## ⚙️ Configuration

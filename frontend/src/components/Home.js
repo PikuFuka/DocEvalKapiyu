@@ -47,11 +47,6 @@ const Home = () => {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.8 }}
               >
-                <div className="d-inline-block mb-4">
-                  <span className="badge bg-white text-primary px-3 py-2 rounded-pill shadow-sm fw-bold">
-                    <i className="bi bi-stars me-2"></i>AI-Powered Evaluation
-                  </span>
-                </div>
                 <h1 className="display-3 fw-bold mb-4 text-dark lh-sm">
                   Intelligent <span className="text-primary position-relative">
                     Faculty
@@ -62,8 +57,7 @@ const Home = () => {
                   Document Analysis
                 </h1>
                 <p className="lead text-muted mb-5 pe-lg-5">
-                  Transform your academic assessment process with our platform. 
-                  Experience automated scoring, instant feedback, and data-driven insights.
+                  Automated scoring, instant feedback, and data-driven insights.
                 </p>
 
                 <div className="d-flex flex-wrap gap-3">
@@ -77,7 +71,7 @@ const Home = () => {
                       </Link>
                       <Link
                         to="/login"
-                        className="btn btn-white btn-lg px-5 py-3 rounded-pill fw-bold shadow-sm hover-scale"
+                        className="btn btn-white text-dark btn-lg px-5 py-3 rounded-pill fw-bold shadow-sm hover-scale"
                       >
                         Sign In
                       </Link>
@@ -126,7 +120,7 @@ const Home = () => {
                         <i className="bi bi-check-circle-fill fs-4"></i>
                       </div>
                       <div>
-                        <h6 className="fw-bold mb-0">Analysis Complete</h6>
+                        <h6 className="fw-bold text-dark mb-0">Analysis Complete</h6>
                         <small className="text-muted">Just now</small>
                       </div>
                     </div>
@@ -143,7 +137,7 @@ const Home = () => {
                         <i className="bi bi-file-earmark-text-fill fs-4"></i>
                       </div>
                       <div>
-                        <h6 className="fw-bold mb-0">New Upload</h6>
+                        <h6 className="fw-bold text-dark mb-0">New Upload</h6>
                         <small className="text-muted">Processing...</small>
                       </div>
                     </div>

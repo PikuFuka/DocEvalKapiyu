@@ -13,6 +13,7 @@ urlpatterns = [
     # Upload URLs
     path('uploads/', views.DocumentUploadView.as_view(), name='document-uploads'),
     path('uploads/peek/', views.peek_drive_link, name='peek-drive-link'),
+    path('uploads/<int:upload_id>/confirm/', views.confirm_upload_classification, name='confirm-upload-classification'),
     path('user/uploads/', views.user_uploads_list, name='user-uploads-list'),
 
     # Admin URLs

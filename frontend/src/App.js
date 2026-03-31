@@ -14,6 +14,7 @@ import Login from './components/login';
 import FacultyRegister from './components/FacultyRegister';
 import EmailVerification from './components/EmailVerification';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
+import ClassificationReview from './components/ClassificationReview';
 import './App.css'; 
 
 
@@ -70,6 +71,11 @@ function AppContent() {
           <Route path="/analytics" element={
             <ProtectedRoute requiredRole="faculty">
               <AnalyticsDashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/classification-review" element={
+            <ProtectedRoute requiredRole="faculty">
+              <ClassificationReview />
             </ProtectedRoute>
           } />
           <Route path="/login" element={<Login />} />
