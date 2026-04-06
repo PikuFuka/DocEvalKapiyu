@@ -10,6 +10,7 @@ gunicorn
 psycopg2-binary
 python-decouple
 python-dotenv
+django-redis
 
 # --- AI & LLM APIs ---
 google-generativeai

@@ -17,6 +17,7 @@ from ..serializers import (
 )
 from ..services.email_service import generate_verification_token, send_verification_email
 from ..services.google_sheets_service import create_user_google_sheet
+from ..services.cache_service import invalidate_admin_cache
 
 class FacultyRegistrationView(generics.CreateAPIView):
     serializer_class = FacultyRegistrationSerializer
@@ -60,6 +61,7 @@ class FacultyRegistrationView(generics.CreateAPIView):
 
         profile_data['sheet_url'] = user_sheet_url
         FacultyProfile.objects.create(**profile_data)
+        invalidate_admin_cache()
 
         # Generate verification token
         verification_token = generate_verification_token()
@@ -139,3 +141,7 @@ class FacultyProfileView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         profile, created = FacultyProfile.objects.get_or_create(user=self.request.user)
         return profile
+
+    def perform_update(self, serializer):
+        serializer.save()
+        invalidate_admin_cache()

@@ -10,9 +10,9 @@ class User(AbstractUser):
         ('admin', 'Admin'),
     ]
 
-    user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES)
+    user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES, db_index=True)
     email_verified = models.BooleanField(default=False)
-    verification_token = models.CharField(max_length=100, blank=True, null=True)
+    verification_token = models.CharField(max_length=100, blank=True, null=True, db_index=True)
     first_name = models.CharField(max_length=100, blank=True)
     middle_initial = models.CharField(max_length=3, blank=True)
     last_name = models.CharField(max_length=100, blank=True)
@@ -67,8 +67,8 @@ class DocumentUpload(models.Model):
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='document_uploads')
     google_drive_link = models.URLField()
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-    created_at = models.DateTimeField(default=timezone.now)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', db_index=True)
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
     google_sheet_link = models.URLField(blank=True, null=True)
 
     # Evaluation and classification results
@@ -91,6 +91,10 @@ class DocumentUpload(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', '-created_at'], name='docupload_user_created_idx'),
+            models.Index(fields=['user', 'status'], name='docupload_user_status_idx'),
+        ]
 
     def __str__(self):
         return f"Upload {self.id} by {self.user.username}"

@@ -2,6 +2,7 @@ from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from django.core.cache import cache
 
 from ..models import DocumentUpload
 from ..serializers import (
@@ -12,23 +13,32 @@ from ..services.document_processing_service import (
     get_drive_file_name,
     map_classification_to_evidence_type,
 )
+from ..services.cache_service import (
+    CACHE_TTL_SHORT,
+    invalidate_upload_related_cache,
+    user_uploads_cache_key,
+)
 
 class DocumentUploadView(generics.ListCreateAPIView):
     serializer_class = DocumentUploadSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return DocumentUpload.objects.filter(user=self.request.user)
+        return DocumentUpload.objects.filter(user=self.request.user).order_by('-created_at')
 
     def perform_create(self, serializer):
         # Save the upload record first
         upload = serializer.save(user=self.request.user)
         upload.status = "processing"
         upload.save(update_fields=['status'])
+        invalidate_upload_related_cache(upload.user_id)
         try:
             process_document_upload(upload, classification_only=True)
         except Exception as e:
             print(f"Error processing upload {upload.id}: {e}")
+        finally:
+            upload.refresh_from_db()
+            invalidate_upload_related_cache(upload.user_id)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -53,9 +63,16 @@ def peek_drive_link(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def user_uploads_list(request):
+    cache_key = user_uploads_cache_key(request.user.id)
+    cached_payload = cache.get(cache_key)
+    if cached_payload is not None:
+        return Response(cached_payload)
+
     uploads = DocumentUpload.objects.filter(user=request.user).order_by('-created_at')
     serializer = DocumentUploadSerializer(uploads, many=True)
-    return Response(serializer.data)
+    payload = serializer.data
+    cache.set(cache_key, payload, CACHE_TTL_SHORT)
+    return Response(payload)
 
 
 @api_view(['POST'])
@@ -113,6 +130,7 @@ def confirm_upload_classification(request, upload_id):
     upload.status = 'processing'
     upload.error_message = None
     upload.save(update_fields=['status', 'error_message'])
+    invalidate_upload_related_cache(upload.user_id)
 
     success = process_document_upload(
         upload,
@@ -120,6 +138,7 @@ def confirm_upload_classification(request, upload_id):
         classification_override=classification_override,
     )
     upload.refresh_from_db()
+    invalidate_upload_related_cache(upload.user_id)
 
     if not success:
         return Response(

@@ -134,8 +134,13 @@ export default function AnalyticsDashboard() {
         </div>
     </div>
   );
-  
-  if (error) return <div className="p-5 text-center text-danger">Unable to load analytics data.</div>;
+
+  if (error) {
+    const errorMessage = typeof error === "string"
+      ? error
+      : (error?.error || error?.detail || "Unable to load analytics data.");
+    return <div className="p-5 text-center text-danger">{errorMessage}</div>;
+  }
   if (!normalized) return null;
 
   // Process Data for Cards
@@ -170,6 +175,13 @@ export default function AnalyticsDashboard() {
       </div>
 
       <div className="container position-relative z-1">
+        {data?.warning && (
+          <div className="alert alert-warning border-0 shadow-sm rounded-4 mb-4" role="alert">
+            <i className="bi bi-exclamation-triangle-fill me-2"></i>
+            {data.warning}
+          </div>
+        )}
+
         <motion.header 
           className="mb-5 d-flex justify-content-between align-items-end"
           initial={{ opacity: 0, y: -20 }}

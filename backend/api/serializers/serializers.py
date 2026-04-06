@@ -66,6 +66,8 @@ class AdminUserSerializer(serializers.ModelSerializer):
         fields = ['id', 'email', 'first_name', 'last_name', 'faculty_profile', 'date_joined', 'total_uploads']
 
     def get_total_uploads(self, obj):
+        if hasattr(obj, 'total_uploads'):
+            return obj.total_uploads
         return obj.document_uploads.count()
 
 class UserSerializer(serializers.ModelSerializer):

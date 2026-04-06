@@ -64,6 +64,31 @@ DATABASES = {
     }
 }
 
+CACHE_TIMEOUT = config('CACHE_TIMEOUT', default=300, cast=int)
+CACHE_BACKEND = config('CACHE_BACKEND', default='locmem').lower()
+
+if CACHE_BACKEND == 'redis':
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': config('REDIS_URL', default='redis://127.0.0.1:6379/1'),
+            'TIMEOUT': CACHE_TIMEOUT,
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                # Keep the app serving even if Redis is temporarily unavailable.
+                'IGNORE_EXCEPTIONS': True,
+            },
+        }
+    }
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'thesis_2026_local_cache',
+            'TIMEOUT': CACHE_TIMEOUT,
+        }
+    }
+
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',

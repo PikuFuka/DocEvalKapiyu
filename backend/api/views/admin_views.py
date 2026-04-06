@@ -1,13 +1,21 @@
-from rest_framework import generics, status
+from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from django.core.cache import cache
 from django.contrib.auth import get_user_model
+from django.db.models import Count
 User = get_user_model()
 
-from ..models import FacultyProfile, DocumentUpload
+from ..models import DocumentUpload
 from ..serializers import (
     AdminUserSerializer
+)
+from ..services.cache_service import (
+    ADMIN_DASHBOARD_STATS_KEY,
+    ADMIN_USERS_LIST_KEY,
+    CACHE_TTL_SHORT,
+    admin_user_documents_cache_key,
 )
 
 @api_view(['GET'])
@@ -16,13 +24,19 @@ def admin_dashboard_stats(request):
     if not request.user.is_staff:
         return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
 
+    cached_payload = cache.get(ADMIN_DASHBOARD_STATS_KEY)
+    if cached_payload is not None:
+        return Response(cached_payload)
+
     total_faculty = User.objects.filter(is_staff=False).count()
     total_documents = DocumentUpload.objects.count()
 
-    return Response({
+    payload = {
         'total_faculty': total_faculty,
         'total_documents': total_documents
-    })
+    }
+    cache.set(ADMIN_DASHBOARD_STATS_KEY, payload, CACHE_TTL_SHORT)
+    return Response(payload)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -30,16 +44,31 @@ def admin_users_list(request):
     if not request.user.is_staff:
         return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
 
+    cached_payload = cache.get(ADMIN_USERS_LIST_KEY)
+    if cached_payload is not None:
+        return Response(cached_payload)
+
     # Get all faculty users with their profile
-    faculty_users = User.objects.filter(is_staff=False).select_related('faculty_profile')
+    faculty_users = (
+        User.objects.filter(is_staff=False)
+        .select_related('faculty_profile')
+        .annotate(total_uploads=Count('document_uploads'))
+    )
     serializer = AdminUserSerializer(faculty_users, many=True)
-    return Response(serializer.data)
+    payload = serializer.data
+    cache.set(ADMIN_USERS_LIST_KEY, payload, CACHE_TTL_SHORT)
+    return Response(payload)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def admin_user_documents(request, user_id):
     if not request.user.is_staff:
         return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
+
+    cache_key = admin_user_documents_cache_key(user_id)
+    cached_payload = cache.get(cache_key)
+    if cached_payload is not None:
+        return Response(cached_payload)
 
     try:
         user = User.objects.get(id=user_id, is_staff=False)
@@ -62,6 +91,7 @@ def admin_user_documents(request, user_id):
                 for upload in uploads
             ]
         }
+        cache.set(cache_key, user_data, CACHE_TTL_SHORT)
         return Response(user_data)
     except User.DoesNotExist:
         return Response({'error': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
