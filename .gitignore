@@ -70,6 +70,14 @@ postgres_data/
 # ===========================================
 .DS_Store
 Thumbs.db
+desktop.ini
+
+# ===========================================
+# Local Generated Artifacts
+# ===========================================
+THESIS_2026.ico
+frontend/.cache/
+frontend/.eslintcache
 
 # ===========================================
 # Logs

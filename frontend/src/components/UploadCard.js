@@ -54,7 +54,7 @@ const getSubSubCriterionOptions = (kra, criterion) => {
   return CLASSIFICATION_TREE[kra]?.criteria?.[criterion] || [];
 };
 
-export const UploadCard = ({ upload, onUploadUpdated, showInlineReview = true }) => {
+export const UploadCard = ({ upload, onUploadUpdated, showInlineReview = false }) => {
   const [expanded, setExpanded] = useState(false);
   const [showText, setShowText] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -194,7 +194,7 @@ export const UploadCard = ({ upload, onUploadUpdated, showInlineReview = true })
 
   return (
     <motion.div 
-      className="upload-card-modern"
+      className="upload-card-modern upload-card-even h-100"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
@@ -285,7 +285,7 @@ export const UploadCard = ({ upload, onUploadUpdated, showInlineReview = true })
             onClick={(e) => e.stopPropagation()}
           >
             <i className="bi bi-arrow-up-right-square me-1"></i>
-            Review Classification
+            Review Queue
           </Link>
         )}
       </div>

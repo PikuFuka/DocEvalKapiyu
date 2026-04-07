@@ -2342,6 +2342,358 @@ body {
   }
 }
 
+/* ============================================
+   CLASSIFICATION REVIEW PAGE REDESIGN
+   ============================================ */
+.classification-review-page {
+  position: relative;
+  background:
+    radial-gradient(circle at 15% 15%, #e0ebff 0%, transparent 35%),
+    radial-gradient(circle at 85% 80%, #d7f3f0 0%, transparent 36%),
+    linear-gradient(160deg, #edf3ff 0%, #f8fbff 46%, #effaf7 100%);
+}
+
+.classification-review-shell {
+  z-index: 1;
+}
+
+.classification-review-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.classification-review-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(2px);
+  opacity: 0.55;
+  animation: reviewFloat 14s ease-in-out infinite;
+}
+
+.classification-review-orb.orb-one {
+  width: 420px;
+  height: 420px;
+  top: -140px;
+  right: -90px;
+  background: radial-gradient(circle, rgba(39, 108, 235, 0.26) 0%, rgba(39, 108, 235, 0.02) 70%);
+}
+
+.classification-review-orb.orb-two {
+  width: 360px;
+  height: 360px;
+  bottom: -120px;
+  left: -80px;
+  animation-delay: -5s;
+  background: radial-gradient(circle, rgba(29, 178, 155, 0.24) 0%, rgba(29, 178, 155, 0.02) 72%);
+}
+
+.classification-review-orb.orb-three {
+  width: 280px;
+  height: 280px;
+  top: 32%;
+  left: 48%;
+  animation-delay: -9s;
+  background: radial-gradient(circle, rgba(255, 196, 115, 0.24) 0%, rgba(255, 196, 115, 0.03) 72%);
+}
+
+.classification-review-noise {
+  position: absolute;
+  inset: 0;
+  opacity: 0.22;
+  background-image:
+    radial-gradient(circle at 12px 12px, rgba(18, 35, 64, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+@keyframes reviewFloat {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -14px, 0);
+  }
+}
+
+.classification-review-hero {
+  position: relative;
+  border-radius: 24px;
+  padding: 1.5rem;
+  border: 1px solid rgba(46, 103, 197, 0.2);
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.84) 0%, rgba(245, 250, 255, 0.9) 48%, rgba(238, 255, 250, 0.82) 100%);
+  box-shadow: 0 18px 40px rgba(25, 73, 142, 0.12);
+  backdrop-filter: blur(8px);
+  overflow: hidden;
+}
+
+.classification-review-hero::before {
+  content: '';
+  position: absolute;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  right: -60px;
+  top: -80px;
+  background: radial-gradient(circle, rgba(78, 154, 255, 0.22) 0%, rgba(78, 154, 255, 0) 72%);
+}
+
+.classification-review-hero-top,
+.classification-review-heading,
+.classification-review-subtitle,
+.classification-review-stat-grid,
+.classification-review-progress-wrap {
+  position: relative;
+  z-index: 1;
+}
+
+.classification-review-hero-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.classification-review-stage-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.42rem 0.86rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #0d4fb6;
+  background: rgba(54, 125, 240, 0.15);
+  border: 1px solid rgba(31, 100, 212, 0.24);
+}
+
+.classification-review-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  border-radius: 999px;
+  padding: 0.42rem 0.95rem;
+  font-weight: 700;
+  border: 1px solid rgba(14, 66, 148, 0.2);
+  background: rgba(255, 255, 255, 0.88);
+  color: #12376f;
+  box-shadow: 0 6px 14px rgba(18, 55, 111, 0.12);
+}
+
+.classification-review-refresh-btn:hover {
+  color: #0d2d5d;
+  border-color: rgba(14, 66, 148, 0.34);
+  background: #ffffff;
+}
+
+.classification-review-refresh-btn:disabled {
+  opacity: 0.72;
+}
+
+.classification-review-heading {
+  margin-top: 0.9rem;
+  margin-bottom: 0.45rem;
+  font-size: clamp(1.55rem, 2.2vw, 2.15rem);
+  font-weight: 850;
+  letter-spacing: -0.02em;
+  color: #122848;
+}
+
+.classification-review-subtitle {
+  max-width: 840px;
+  color: #3f5778;
+  font-size: 0.99rem;
+}
+
+.classification-review-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.classification-review-stat-card {
+  border-radius: 14px;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid rgba(56, 91, 140, 0.18);
+  background: rgba(255, 255, 255, 0.65);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.classification-review-stat-card.pending {
+  background: linear-gradient(135deg, rgba(255, 241, 215, 0.82) 0%, rgba(255, 248, 229, 0.88) 100%);
+}
+
+.classification-review-stat-card.completed {
+  background: linear-gradient(135deg, rgba(226, 249, 237, 0.84) 0%, rgba(240, 253, 248, 0.9) 100%);
+}
+
+.classification-review-stat-card.processing {
+  background: linear-gradient(135deg, rgba(225, 238, 255, 0.84) 0%, rgba(241, 248, 255, 0.9) 100%);
+}
+
+.classification-review-stat-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #395376;
+  font-weight: 700;
+}
+
+.classification-review-stat-value {
+  font-size: 1.42rem;
+  line-height: 1;
+  color: #132947;
+}
+
+.classification-review-progress-wrap {
+  border-top: 1px solid rgba(46, 103, 197, 0.2);
+  padding-top: 0.9rem;
+}
+
+.classification-review-progress-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.45rem;
+  color: #2f4b72;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.classification-review-progress-label strong {
+  color: #134288;
+  font-size: 1rem;
+}
+
+.classification-review-progress-track {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(20, 62, 124, 0.12);
+}
+
+.classification-review-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #1f7ad8 0%, #27b89b 100%);
+  transition: width 0.35s ease;
+}
+
+.classification-review-error {
+  border-radius: 16px;
+  border: 1px solid rgba(157, 56, 53, 0.2);
+  padding: 0.95rem 1rem;
+  background: linear-gradient(145deg, rgba(255, 239, 238, 0.92) 0%, rgba(255, 246, 245, 0.96) 100%);
+  color: #7f2f2d;
+}
+
+.classification-review-error-btn {
+  border-radius: 999px;
+  font-weight: 700;
+  background: #ffffff;
+  border: 1px solid rgba(157, 56, 53, 0.2);
+  color: #6f2524;
+}
+
+.classification-review-list-head {
+  padding: 0 0.15rem;
+}
+
+.classification-review-list-title {
+  font-size: 1.08rem;
+  font-weight: 800;
+  color: #1a3354;
+}
+
+.classification-review-list-subtitle {
+  color: #4a6385;
+  font-size: 0.9rem;
+}
+
+.classification-review-empty {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.86) 0%, rgba(247, 252, 255, 0.92) 100%);
+  border: 1px solid rgba(39, 107, 205, 0.18);
+  box-shadow: 0 14px 34px rgba(24, 70, 134, 0.12);
+}
+
+.classification-review-empty-icon {
+  background: rgba(30, 173, 115, 0.14);
+  color: #11995f;
+}
+
+.classification-review-empty h4 {
+  color: #17325c;
+}
+
+.classification-review-empty p {
+  color: #4f6484;
+}
+
+.classification-review-continue-btn {
+  color: #ffffff;
+  border: 0;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  background: linear-gradient(120deg, #1556c8 0%, #17875a 100%);
+  box-shadow: 0 10px 22px rgba(24, 92, 172, 0.24);
+}
+
+.classification-review-continue-btn:hover {
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.classification-review-page .upload-card-modern {
+  box-shadow: 0 12px 24px rgba(20, 66, 129, 0.08);
+}
+
+@media (max-width: 991.98px) {
+  .classification-review-hero {
+    border-radius: 20px;
+    padding: 1.2rem;
+  }
+
+  .classification-review-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767.98px) {
+  .classification-review-stage-pill {
+    font-size: 0.71rem;
+    letter-spacing: 0.05em;
+  }
+
+  .classification-review-refresh-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .classification-review-stat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .classification-review-heading {
+    font-size: 1.4rem;
+  }
+
+  .classification-review-subtitle {
+    font-size: 0.92rem;
+  }
+
+  .classification-review-progress-label {
+    font-size: 0.84rem;
+  }
+}
+
 .upload-card-modern .form-select.form-select-sm {
   border-color: #d6dbe2;
 }
@@ -2650,5 +3002,54 @@ body {
 
   .header-left .text-dark {
     white-space: normal;
+  }
+}
+
+/* ============================================
+   EVEN CARD ALIGNMENT (DASHBOARD + REVIEW)
+   ============================================ */
+.upload-card-even {
+  display: flex;
+  flex-direction: column;
+}
+
+.upload-card-even .result-item {
+  min-height: 112px;
+}
+
+.upload-card-even .result-value {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (min-width: 992px) {
+  .faculty-dashboard .row.g-3 > [class*="col-"] > .upload-card-even,
+  .faculty-dashboard .row.g-3 > [class*="col-"] > * > .upload-card-even,
+  .classification-review-page .row.g-3 > [class*="col-"] > .upload-card-even {
+    height: 100%;
+    margin-bottom: 0;
+  }
+
+  .upload-card-even .quick-info-row {
+    min-height: 64px;
+  }
+
+  .upload-card-even .drive-link,
+  .upload-card-even .info-time-badge,
+  .upload-card-even .quick-info-row .btn {
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .upload-card-even .result-item {
+    min-height: auto;
+  }
+
+  .upload-card-even .quick-info-row {
+    min-height: 0;
   }
 }

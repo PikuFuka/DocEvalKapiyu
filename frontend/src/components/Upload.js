@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -8,9 +8,27 @@ const Upload = () => {
   const [driveLinks, setDriveLinks] = useState(['']);
   const [linkPreviews, setLinkPreviews] = useState({}); // Store previews by index
   const [loading, setLoading] = useState(false);
+  const [pendingReviewCount, setPendingReviewCount] = useState(0);
+  const [checkingQueue, setCheckingQueue] = useState(true);
   const navigate = useNavigate();
   const { notify } = useNotification();
 
+  useEffect(() => {
+    const checkPendingReviews = async () => {
+      setCheckingQueue(true);
+      try {
+        const response = await api.get('/user/uploads/');
+        const pending = response.data.filter((upload) => upload.status === 'for_review').length;
+        setPendingReviewCount(pending);
+      } catch (error) {
+        console.error('Failed to check pending reviews:', error);
+      } finally {
+        setCheckingQueue(false);
+      }
+    };
+
+    checkPendingReviews();
+  }, []);
   const addLinkField = () => {
     if (driveLinks.length < 5) {
       setDriveLinks([...driveLinks, '']);
@@ -74,6 +92,18 @@ const Upload = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (checkingQueue) {
+      notify.info('Checking review queue. Please try again in a moment.');
+      return;
+    }
+
+    if (pendingReviewCount > 0) {
+      notify.warning('Finish reviewing pending classification results in the review queue before submitting another batch.');
+      navigate('/classification-review');
+      return;
+    }
+
     setLoading(true);
 
     const nonEmptyLinks = driveLinks.filter(link => link.trim() !== '');
@@ -85,15 +115,21 @@ const Upload = () => {
     }
 
     try {
-      notify.info('Starting classification... Please wait.');
-      const promises = nonEmptyLinks.map(link =>
-        api.post('/uploads/', { google_drive_link: link.trim() })
-      );
+      const queueResponse = await api.get('/user/uploads/');
+      const pending = queueResponse.data.filter((upload) => upload.status === 'for_review').length;
+      setPendingReviewCount(pending);
 
-      await Promise.all(promises);
+      if (pending > 0) {
+        notify.warning('Finish reviewing pending classification results in the review queue before submitting another batch.');
+        navigate('/classification-review');
+        return;
+      }
+
+      notify.info('Starting classification... Please wait.');
+      await api.post('/uploads/', { google_drive_links: nonEmptyLinks });
 
       notify.success(
-        `Successfully submitted ${nonEmptyLinks.length} document link(s). Redirecting to classification review.`
+        `Successfully submitted ${nonEmptyLinks.length} document link(s). Please review and confirm all classification results before continuing to dashboard.`
       );
       setDriveLinks(['']);
       setLinkPreviews({});
@@ -151,6 +187,20 @@ const Upload = () => {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
           >
+            {pendingReviewCount > 0 && (
+              <div className="alert alert-warning border-0 rounded-4 mb-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                <div className="small text-dark mb-0">
+                  You have <strong>{pendingReviewCount}</strong> classification {pendingReviewCount === 1 ? 'result' : 'results'} waiting for review. Finish reviewing in the Review Queue before starting another batch.
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-dark rounded-pill px-3 fw-bold"
+                  onClick={() => navigate('/classification-review')}
+                >
+                  Go to Review Queue
+                </button>
+              </div>
+            )}
             {driveLinks.map((link, index) => (
               <motion.div
                 key={index}
@@ -194,7 +244,7 @@ const Upload = () => {
                                     onBlur={(e) => handleBlur(index, e.target.value)}
                                   className={`form-control border-0 bg-light py-3 upload-link-input ${linkPreviews[index]?.status === 'error' ? 'is-invalid' : ''} overflow-hidden`}
                                     required={driveLinks.length === 1 && index === 0}
-                                    disabled={linkPreviews[index]?.status === 'loading'}
+                                    disabled={linkPreviews[index]?.status === 'loading' || loading || checkingQueue || pendingReviewCount > 0}
                                 />
                             )}
 
@@ -220,6 +270,7 @@ const Upload = () => {
                         type="button"
                         onClick={() => removeLinkField(index)}
                         className="btn btn-light text-danger border rounded-3 px-3 hover-shadow"
+                        disabled={loading || checkingQueue || pendingReviewCount > 0}
                     >
                         <i className="bi bi-trash3-fill"></i>
                     </button>
@@ -233,7 +284,7 @@ const Upload = () => {
                 type="button"
                 onClick={addLinkField}
                 className="btn btn-outline-primary fw-bold rounded-pill px-4 py-2"
-                disabled={loading}
+                disabled={loading || checkingQueue || pendingReviewCount > 0}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
@@ -243,15 +294,24 @@ const Upload = () => {
               <motion.button
                 type="submit"
                 className="btn btn-primary bg-gradient fw-bold text-white rounded-pill px-5 py-2 shadow-sm"
-                disabled={loading}
+                disabled={loading || checkingQueue || pendingReviewCount > 0}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                {loading ? (
+                {checkingQueue ? (
+                  <span className="d-flex align-items-center gap-2">
+                    <span className="spinner-border spinner-border-sm" role="status"></span>
+                    Checking queue...
+                  </span>
+                ) : loading ? (
                   <span className="d-flex align-items-center gap-2">
                     <span className="spinner-border spinner-border-sm" role="status"></span>
                     Classifying...
                   </span>
+                ) : pendingReviewCount > 0 ? (
+                  <>
+                    <i className="bi bi-lock-fill me-2"></i>Finish Review First
+                  </>
                 ) : (
                   <>
                     <i className="bi bi-rocket-takeoff-fill me-2"></i>Start Classification

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { UploadCard } from './UploadCard';
 import LoadingOverlay from './LoadingOverlay';
@@ -9,35 +9,41 @@ import { useNotification } from './Notification';
 const ClassificationReview = () => {
   const [uploads, setUploads] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
   const { notify } = useNotification();
 
-  const fetchReviewData = useCallback(async (isBackground = false) => {
-    if (!isBackground) setLoading(true);
+  const fetchQueue = useCallback(async (isBackground = false) => {
+    if (isBackground) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+
     try {
       const response = await api.get('/user/uploads/');
-      const sortedData = [...response.data].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-      setUploads(sortedData);
-    } catch (error) {
-      console.error('Error fetching classification review data:', error);
-      if (!isBackground) {
-        notify.error('Unable to load classification review queue.');
-      }
+      const data = Array.isArray(response.data) ? response.data : [];
+      const sorted = [...data].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      setUploads(sorted);
+      setError('');
+    } catch (fetchError) {
+      console.error('Failed to fetch review queue:', fetchError);
+      setError('Unable to load your review queue right now. Please try again.');
     } finally {
-      if (!isBackground) setLoading(false);
+      if (isBackground) {
+        setRefreshing(false);
+      } else {
+        setLoading(false);
+      }
     }
-  }, [notify]);
+  }, []);
 
   useEffect(() => {
-    fetchReviewData();
+    fetchQueue();
+  }, [fetchQueue]);
 
-    const interval = setInterval(() => {
-      fetchReviewData(true);
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, [fetchReviewData]);
-
-  const reviewUploads = useMemo(() => {
+  const reviewQueue = useMemo(() => {
     return uploads.filter((upload) => upload.status === 'for_review');
   }, [uploads]);
 
@@ -49,130 +55,167 @@ const ClassificationReview = () => {
     return uploads.filter((upload) => upload.status === 'completed').length;
   }, [uploads]);
 
-  if (loading) return <LoadingOverlay message="Loading Classification Review..." />;
+  const queueTotal = reviewQueue.length + completedCount;
+  const readinessPercent = queueTotal > 0
+    ? Math.round((completedCount / queueTotal) * 100)
+    : (processingCount > 0 ? 0 : 100);
+
+  useEffect(() => {
+    if (!loading && reviewQueue.length === 0) {
+      navigate('/faculty-dashboard', { replace: true });
+    }
+  }, [loading, reviewQueue.length, navigate]);
+
+  const handleContinue = () => {
+    notify.success('Review queue completed. Redirecting to dashboard.');
+    navigate('/faculty-dashboard');
+  };
+
+  if (loading) {
+    return <LoadingOverlay message="Loading review queue..." />;
+  }
 
   return (
-    <div className="classification-review-page min-vh-100 py-5 position-relative overflow-hidden" style={{ background: '#eef2f8' }}>
-      <div className="position-absolute top-0 start-0 w-100 h-100 overflow-hidden" style={{ zIndex: 0 }}>
-        <div
-          className="position-absolute top-0 end-0 rounded-circle blur-3xl opacity-25"
-          style={{ width: '720px', height: '720px', background: '#60a5fa', transform: 'translate(28%, -30%)' }}
-        ></div>
-        <div
-          className="position-absolute bottom-0 start-0 rounded-circle blur-3xl opacity-25"
-          style={{ width: '620px', height: '620px', background: '#22c55e', transform: 'translate(-35%, 30%)' }}
-        ></div>
+    <div className="classification-review-page min-vh-100 py-5 position-relative overflow-hidden">
+      <div className="classification-review-bg" aria-hidden="true">
+        <span className="classification-review-orb orb-one"></span>
+        <span className="classification-review-orb orb-two"></span>
+        <span className="classification-review-orb orb-three"></span>
+        <span className="classification-review-noise"></span>
       </div>
 
-      <div className="container position-relative z-1">
+      <div className="container classification-review-shell position-relative">
         <motion.header
-          className="mb-4 d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3"
-          initial={{ opacity: 0, y: -16 }}
+          className="classification-review-hero mb-4"
+          initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
         >
-          <div>
-            <h1 className="fw-bold text-dark mb-1" style={{ letterSpacing: '-1px' }}>Classification Review</h1>
-            <p className="text-secondary mb-0">
-              Confirm each AI classification before extraction and Google Sheets export.
-            </p>
+          <div className="classification-review-hero-top">
+            <span className="classification-review-stage-pill">
+              <i className="bi bi-shield-check me-2"></i>
+              Review Stage
+            </span>
+            <button
+              type="button"
+              className="btn classification-review-refresh-btn"
+              onClick={() => fetchQueue(true)}
+              disabled={refreshing}
+            >
+              {refreshing ? (
+                <span className="d-flex align-items-center gap-2">
+                  <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                  Refreshing...
+                </span>
+              ) : (
+                <>
+                  <i className="bi bi-arrow-clockwise me-2"></i>
+                  Refresh Queue
+                </>
+              )}
+            </button>
           </div>
 
-          <div className="d-flex flex-wrap gap-2">
-            <Link to="/upload" className="btn btn-light border rounded-pill px-4 py-2 fw-bold">
-              <i className="bi bi-plus-lg me-2"></i>
-              New Upload
-            </Link>
-            <Link to="/faculty-dashboard" className="btn btn-dark rounded-pill px-4 py-2 fw-bold">
-              <i className="bi bi-speedometer2 me-2"></i>
-              Dashboard
-            </Link>
+          <h1 className="classification-review-heading">Review AI Classification Before Export</h1>
+          <p className="classification-review-subtitle mb-0">
+            Confirm each pending item below before continuing to the dashboard. Verified items move forward to final extraction and reporting.
+          </p>
+
+          <div className="classification-review-stat-grid mt-4">
+            <article className="classification-review-stat-card pending">
+              <span className="classification-review-stat-label">Pending Confirmation</span>
+              <strong className="classification-review-stat-value">{reviewQueue.length}</strong>
+            </article>
+            <article className="classification-review-stat-card completed">
+              <span className="classification-review-stat-label">Ready in Dashboard</span>
+              <strong className="classification-review-stat-value">{completedCount}</strong>
+            </article>
+            <article className="classification-review-stat-card processing">
+              <span className="classification-review-stat-label">Still Processing</span>
+              <strong className="classification-review-stat-value">{processingCount}</strong>
+            </article>
+          </div>
+
+          <div className="classification-review-progress-wrap mt-3">
+            <div className="classification-review-progress-label">
+              <span>Queue readiness</span>
+              <strong>{readinessPercent}%</strong>
+            </div>
+            <div className="classification-review-progress-track">
+              <span className="classification-review-progress-fill" style={{ width: `${readinessPercent}%` }}></span>
+            </div>
           </div>
         </motion.header>
 
-        <motion.div
-          className="row g-3 mb-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.15 }}
-        >
-          {[
-            {
-              title: 'Ready For Review',
-              value: reviewUploads.length,
-              icon: 'bi-check2-square',
-              bg: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)',
-              text: '#1e40af',
-            },
-            {
-              title: 'Still Classifying',
-              value: processingCount,
-              icon: 'bi-hourglass-split',
-              bg: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
-              text: '#92400e',
-            },
-            {
-              title: 'Already Confirmed',
-              value: completedCount,
-              icon: 'bi-check-circle-fill',
-              bg: 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)',
-              text: '#166534',
-            },
-          ].map((stat) => (
-            <div key={stat.title} className="col-12 col-md-4">
-              <div className="card border-0 rounded-4 shadow-sm h-100">
-                <div className="card-body p-3 d-flex align-items-center justify-content-between">
-                  <div>
-                    <h6 className="text-secondary text-uppercase small fw-bold mb-1">{stat.title}</h6>
-                    <h3 className="fw-bold mb-0">{stat.value}</h3>
-                  </div>
-                  <div
-                    className="rounded-circle d-flex align-items-center justify-content-center"
-                    style={{ width: '54px', height: '54px', background: stat.bg, color: stat.text }}
-                  >
-                    <i className={`bi ${stat.icon} fs-4`}></i>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </motion.div>
-
-        {reviewUploads.length === 0 ? (
+        {error && (
           <motion.div
-            className="card border-0 rounded-5 shadow-sm"
-            initial={{ opacity: 0, y: 18 }}
+            className="classification-review-error mb-4 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3"
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <div className="card-body p-5 text-center">
-              <div
-                className="mx-auto mb-3 rounded-circle d-flex align-items-center justify-content-center"
-                style={{ width: '88px', height: '88px', background: 'rgba(13, 110, 253, 0.12)', color: '#0d6efd' }}
-              >
-                <i className="bi bi-check2-all fs-1"></i>
-              </div>
-              <h4 className="fw-bold text-dark">No pending classifications</h4>
-              <p className="text-muted mb-4">
-                Once a new upload is classified, it will appear here for your confirmation.
-              </p>
-              <Link to="/upload" className="btn btn-primary rounded-pill px-5 py-2 fw-bold">
-                Upload Another Document
-              </Link>
+            <div className="small mb-0 d-flex align-items-center gap-2">
+              <i className="bi bi-exclamation-circle-fill"></i>
+              {error}
             </div>
+            <button
+              type="button"
+              className="btn btn-sm classification-review-error-btn"
+              onClick={() => fetchQueue()}
+            >
+              Retry
+            </button>
           </motion.div>
+        )}
+
+        {reviewQueue.length > 0 ? (
+          <>
+            <motion.div
+              className="classification-review-list-head d-flex flex-column flex-md-row justify-content-between align-items-md-end gap-2 mb-3"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+            >
+              <div>
+                <h2 className="classification-review-list-title mb-1">Pending Confirmation Queue</h2>
+                <p className="classification-review-list-subtitle mb-0">
+                  Validate each AI classification and continue to finalize your outputs.
+                </p>
+              </div>
+            </motion.div>
+
+            <div className="row g-3">
+            {reviewQueue.map((upload) => (
+              <div key={upload.id} className="col-12 col-lg-6">
+                <UploadCard upload={upload} onUploadUpdated={fetchQueue} showInlineReview />
+              </div>
+            ))}
+            </div>
+          </>
         ) : (
           <motion.div
-            className="d-flex flex-column gap-3"
-            initial={{ opacity: 0, y: 18 }}
+            className="classification-review-empty card border-0 rounded-4 p-5 text-center"
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            {reviewUploads.map((upload) => (
-              <UploadCard
-                key={upload.id}
-                upload={upload}
-                onUploadUpdated={fetchReviewData}
-                showInlineReview
-              />
-            ))}
+            <div
+              className="classification-review-empty-icon mx-auto mb-3 d-flex align-items-center justify-content-center rounded-circle"
+              style={{ width: '80px', height: '80px' }}
+            >
+              <i className="bi bi-check2-circle fs-1"></i>
+            </div>
+            <h4 className="fw-bold mb-2">All Reviews Completed</h4>
+            <p className="mb-4">
+              Great work. You have {completedCount} completed {completedCount === 1 ? 'document' : 'documents'} ready in your dashboard.
+            </p>
+            <div>
+              <button
+                type="button"
+                className="btn classification-review-continue-btn rounded-pill px-5 py-2 fw-bold"
+                onClick={handleContinue}
+              >
+                Continue to Dashboard
+              </button>
+            </div>
           </motion.div>
         )}
       </div>

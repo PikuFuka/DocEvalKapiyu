@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { NotificationProvider } from './components/Notification';
@@ -15,6 +15,7 @@ import FacultyRegister from './components/FacultyRegister';
 import EmailVerification from './components/EmailVerification';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 import ClassificationReview from './components/ClassificationReview';
+import api from './services/api';
 import './App.css'; 
 
 
@@ -45,6 +46,89 @@ const ProtectedRoute = ({ children, requiredRole }) => {
   return children;
 };
 
+const ReviewQueueGuard = ({ children, requirePending = false }) => {
+  const { user, isAuthenticated, loading } = useAuth();
+  const [checkingQueue, setCheckingQueue] = useState(true);
+  const [pendingReviewCount, setPendingReviewCount] = useState(0);
+  const [queueError, setQueueError] = useState('');
+
+  useEffect(() => {
+    const shouldCheckQueue = isAuthenticated && user && !user.is_staff;
+    if (!shouldCheckQueue) {
+      setPendingReviewCount(0);
+      setQueueError('');
+      setCheckingQueue(false);
+      return;
+    }
+
+    let isMounted = true;
+
+    const fetchPendingQueue = async () => {
+      setCheckingQueue(true);
+      try {
+        const response = await api.get('/user/uploads/');
+        const uploads = Array.isArray(response.data) ? response.data : [];
+        const pending = uploads.filter((upload) => upload.status === 'for_review').length;
+        if (isMounted) {
+          setPendingReviewCount(pending);
+          setQueueError('');
+        }
+      } catch (error) {
+        console.error('Failed to fetch pending review queue:', error);
+        if (isMounted) {
+          setQueueError('Unable to verify your review queue. Please retry.');
+        }
+      } finally {
+        if (isMounted) {
+          setCheckingQueue(false);
+        }
+      }
+    };
+
+    fetchPendingQueue();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuthenticated, user]);
+
+  if (loading || checkingQueue) {
+    return <LoadingOverlay message="Checking review queue..." />;
+  }
+
+  if (queueError) {
+    return (
+      <div className="min-vh-100 d-flex align-items-center justify-content-center px-3" style={{ background: '#f1f5f9' }}>
+        <div className="card border-0 shadow-sm rounded-4 p-4" style={{ maxWidth: '520px', width: '100%' }}>
+          <h5 className="fw-bold text-dark mb-2">Review Queue Check Failed</h5>
+          <p className="text-secondary small mb-3">{queueError}</p>
+          <button
+            type="button"
+            className="btn btn-primary rounded-pill px-4 fw-bold"
+            onClick={() => window.location.reload()}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || user?.is_staff) {
+    return children;
+  }
+
+  if (requirePending && pendingReviewCount === 0) {
+    return <Navigate to="/faculty-dashboard" replace />;
+  }
+
+  if (!requirePending && pendingReviewCount > 0) {
+    return <Navigate to="/classification-review" replace />;
+  }
+
+  return children;
+};
+
 function AppContent() {
   return (
     <div className="app-container">
@@ -54,13 +138,17 @@ function AppContent() {
           <Route path="/" element={<Home />} />
           <Route path="/upload" element={
             <ProtectedRoute requiredRole="faculty">
-              <Upload />
+              <ReviewQueueGuard>
+                <Upload />
+              </ReviewQueueGuard>
             </ProtectedRoute>
           } />
           <Route path="/about" element={<About />} />
           <Route path="/faculty-dashboard" element={
             <ProtectedRoute requiredRole="faculty">
-              <FacultyDashboard />
+              <ReviewQueueGuard>
+                <FacultyDashboard />
+              </ReviewQueueGuard>
             </ProtectedRoute>
           } />
           <Route path="/admin-dashboard" element={
@@ -75,7 +163,9 @@ function AppContent() {
           } />
           <Route path="/classification-review" element={
             <ProtectedRoute requiredRole="faculty">
-              <ClassificationReview />
+              <ReviewQueueGuard requirePending>
+                <ClassificationReview />
+              </ReviewQueueGuard>
             </ProtectedRoute>
           } />
           <Route path="/login" element={<Login />} />

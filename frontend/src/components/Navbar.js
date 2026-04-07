@@ -166,19 +166,6 @@ const Navbar = () => {
                   </Link>
                 </li>
                 <li className="nav-item">
-                  <Link
-                    to="/classification-review"
-                    className={`nav-link px-3 ${isActive('/classification-review') ? 'active' : ''}`}
-                    style={{
-                      color: isActive('/classification-review') ? '#006633' : '#555',
-                      fontWeight: isActive('/classification-review') ? '600' : '500'
-                    }}
-                  >
-                    Review
-                    {isActive('/classification-review') && <span className="nav-indicator"></span>}
-                  </Link>
-                </li>
-                <li className="nav-item">
                 <Link
                   to="/analytics"
                   className={`nav-link px-3 ${isActive('/analytics') ? 'active' : ''}`}
