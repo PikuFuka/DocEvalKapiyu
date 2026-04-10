@@ -87,6 +87,7 @@ class DocumentUpload(models.Model):
     page_count = models.IntegerField(blank=True, null=True)
     extracted_text_preview = models.TextField(blank=True, null=True)
     source_filename = models.CharField(max_length=255, blank=True, null=True)
+    content_hash = models.CharField(max_length=64, blank=True, null=True, db_index=True)
     extracted_json = models.JSONField(default=list, blank=True) 
 
     class Meta:
@@ -102,3 +103,39 @@ class DocumentUpload(models.Model):
     def get_extracted_items(self):
         """Helper method to safely get the extracted items list."""
         return self.extracted_json if isinstance(self.extracted_json, list) else []
+
+
+class ClassificationFeedback(models.Model):
+    upload = models.OneToOneField(
+        DocumentUpload,
+        on_delete=models.CASCADE,
+        related_name='classification_feedback',
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='classification_feedback_entries',
+    )
+    content_hash = models.CharField(max_length=64, blank=True, null=True, db_index=True)
+
+    predicted_primary_kra = models.CharField(max_length=255)
+    predicted_criteria = models.CharField(max_length=255)
+    predicted_sub_criteria = models.CharField(max_length=255)
+
+    corrected_primary_kra = models.CharField(max_length=255)
+    corrected_criteria = models.CharField(max_length=255)
+    corrected_sub_criteria = models.CharField(max_length=255)
+
+    was_correct = models.BooleanField(default=False, db_index=True)
+    feedback_note = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['content_hash', '-created_at'], name='feedback_hash_created_idx'),
+        ]
+
+    def __str__(self):
+        state = 'correct' if self.was_correct else 'corrected'
+        return f"Feedback for upload {self.upload_id} ({state})"

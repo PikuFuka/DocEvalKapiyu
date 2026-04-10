@@ -63,6 +63,7 @@ export const UploadCard = ({ upload, onUploadUpdated, showInlineReview = false }
   const [selectedKra, setSelectedKra] = useState(normalizeKra(upload.primary_kra));
   const [selectedCriterion, setSelectedCriterion] = useState(normalizeCriterion(upload.criteria));
   const [selectedSubSubCriterion, setSelectedSubSubCriterion] = useState(normalizeSubSubCriterion(upload.sub_criteria));
+  const [feedbackNote, setFeedbackNote] = useState('');
   const { notify } = useNotification();
 
   const isCompleted = upload.status === 'completed';
@@ -75,6 +76,7 @@ export const UploadCard = ({ upload, onUploadUpdated, showInlineReview = false }
     setSelectedKra(normalizeKra(upload.primary_kra));
     setSelectedCriterion(normalizeCriterion(upload.criteria));
     setSelectedSubSubCriterion(normalizeSubSubCriterion(upload.sub_criteria));
+    setFeedbackNote('');
   }, [upload.id, upload.primary_kra, upload.criteria, upload.sub_criteria]);
 
   const kraOptions = useMemo(() => {
@@ -92,6 +94,14 @@ export const UploadCard = ({ upload, onUploadUpdated, showInlineReview = false }
   }, [selectedKra, selectedCriterion, selectedSubSubCriterion]);
 
   const isSelectionComplete = Boolean(selectedKra && selectedCriterion && selectedSubSubCriterion);
+
+  const isOutputChanged = useMemo(() => {
+    return (
+      normalizeKra(selectedKra) !== normalizeKra(upload.primary_kra) ||
+      normalizeCriterion(selectedCriterion) !== normalizeCriterion(upload.criteria) ||
+      normalizeSubSubCriterion(selectedSubSubCriterion) !== normalizeSubSubCriterion(upload.sub_criteria)
+    );
+  }, [selectedKra, selectedCriterion, selectedSubSubCriterion, upload.primary_kra, upload.criteria, upload.sub_criteria]);
 
   const displayKra = (isForReview ? selectedKra : upload.primary_kra) || 'N/A';
   const displayCriterion = (isForReview ? selectedCriterion : upload.criteria) || 'N/A';
@@ -207,12 +217,19 @@ export const UploadCard = ({ upload, onUploadUpdated, showInlineReview = false }
     try {
       setConfirming(true);
       notify.info('Running extraction and sending results to Google Sheets...');
-      await api.post(`/uploads/${upload.id}/confirm/`, {
+      const response = await api.post(`/uploads/${upload.id}/confirm/`, {
         primary_kra: selectedKra,
         criteria: selectedCriterion,
         sub_criteria: selectedSubSubCriterion,
+        feedback_note: feedbackNote,
       });
-      notify.success('Classification confirmed. Extraction and sheet export completed.');
+
+      if (response?.data?.prediction_was_correct) {
+        notify.success('Classification confirmed. Positive feedback recorded for learning.');
+      } else {
+        notify.success('Correction saved. Future predictions can learn from this feedback.');
+      }
+
       if (onUploadUpdated) {
         await onUploadUpdated(true);
       }
@@ -391,6 +408,26 @@ export const UploadCard = ({ upload, onUploadUpdated, showInlineReview = false }
                 </select>
               </div>
             </div>
+
+            <div className={`small mt-3 p-2 rounded ${isOutputChanged ? 'bg-warning-subtle text-dark' : 'bg-info-subtle text-dark'}`}>
+              {isOutputChanged
+                ? 'Correction detected: this will be saved as model feedback.'
+                : 'If this output is already correct, confirming still records positive feedback.'}
+            </div>
+
+            {isOutputChanged && (
+              <div className="mt-3">
+                <label className="form-label classification-label mb-1">What was wrong? (optional)</label>
+                <textarea
+                  className="form-control"
+                  rows={2}
+                  placeholder="Add context that can help future learning"
+                  value={feedbackNote}
+                  onChange={(event) => setFeedbackNote(event.target.value)}
+                  disabled={confirming}
+                />
+              </div>
+            )}
 
             <div className="classification-review-footer d-flex flex-column flex-sm-row justify-content-end align-items-sm-center gap-2 mt-3 pt-3">
               <button

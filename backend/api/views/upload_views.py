@@ -14,6 +14,7 @@ from ..services.document_processing_service import (
     get_drive_file_name,
     map_classification_to_evidence_type,
 )
+from ..services.feedback_learning_service import record_classification_feedback
 from ..services.cache_service import (
     CACHE_TTL_SHORT,
     invalidate_upload_related_cache,
@@ -181,6 +182,12 @@ def confirm_upload_classification(request, upload_id):
     def _clean(value):
         return str(value).strip() if value is not None else ''
 
+    predicted_classification = {
+        'primary_kra': _clean(upload.primary_kra),
+        'criteria': _clean(upload.criteria).upper(),
+        'sub_criteria': _clean(upload.sub_criteria),
+    }
+
     classification_override = {
         'primary_kra': _clean(request.data.get('primary_kra', upload.primary_kra)),
         'criteria': _clean(request.data.get('criteria', upload.criteria)).upper(),
@@ -209,6 +216,14 @@ def confirm_upload_classification(request, upload_id):
             status=status.HTTP_400_BAD_REQUEST
         )
 
+    feedback_note = _clean(request.data.get('feedback_note', ''))
+    feedback_entry = record_classification_feedback(
+        upload=upload,
+        predicted_payload=predicted_classification,
+        corrected_payload=classification_override,
+        feedback_note=feedback_note,
+    )
+
     upload.status = 'processing'
     upload.error_message = None
     upload.save(update_fields=['status', 'error_message'])
@@ -224,9 +239,16 @@ def confirm_upload_classification(request, upload_id):
 
     if not success:
         return Response(
-            {'error': upload.error_message or 'Failed to process confirmed classification.'},
+            {
+                'error': upload.error_message or 'Failed to process confirmed classification.',
+                'feedback_recorded': True,
+                'prediction_was_correct': feedback_entry.was_correct,
+            },
             status=status.HTTP_400_BAD_REQUEST
         )
 
     serializer = DocumentUploadSerializer(upload)
-    return Response(serializer.data, status=status.HTTP_200_OK)
+    response_payload = dict(serializer.data)
+    response_payload['feedback_recorded'] = True
+    response_payload['prediction_was_correct'] = feedback_entry.was_correct
+    return Response(response_payload, status=status.HTTP_200_OK)

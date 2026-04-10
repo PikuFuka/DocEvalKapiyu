@@ -36,6 +36,10 @@ from .google_sheets_service import (
 
 from .extraction_strategies import route_extraction
 from .scoring_rules import calculate_score, SCORING_RULES
+from .feedback_learning_service import (
+    apply_learned_feedback,
+    build_content_hash,
+)
 
 # --- DocTR & Conversion Imports ---
 try:
@@ -1158,9 +1162,6 @@ def process_document_upload(upload, classification_only=False, classification_ov
         classification_result = classify_document(priority_file['text'])
         classification_result = _merge_classification_result(classification_result, classification_override)
 
-        evidence_type = map_classification_to_evidence_type(classification_result)
-        print(f"Determined Evidence Type: {evidence_type}")
-
         combined_text = ""
         total_pages = 0
         file_names = []
@@ -1172,6 +1173,18 @@ def process_document_upload(upload, classification_only=False, classification_ov
             combined_text += f['text']
             total_pages += f['page_count']
             file_names.append(f['file_name'])
+
+        content_hash_input = "\n".join(f.get('text', '') for f in sorted_files)
+        content_hash = build_content_hash(content_hash_input)
+        learned_feedback = None
+
+        if not classification_override:
+            classification_result, learned_feedback = apply_learned_feedback(content_hash, classification_result)
+            if learned_feedback:
+                print(f"Applied learned correction from feedback {learned_feedback.id}.")
+
+        evidence_type = map_classification_to_evidence_type(classification_result)
+        print(f"Determined Evidence Type: {evidence_type}")
 
         if classification_only:
             classification_duration = time.time() - start_time
@@ -1185,11 +1198,14 @@ def process_document_upload(upload, classification_only=False, classification_ov
             upload.equivalent_percentage = None
             upload.error_message = None
             upload.classification_time = classification_duration
+            upload.content_hash = content_hash
             upload.explanation = (
                 f"Classified using '{priority_file['file_name']}'. "
                 f"Processing took {classification_duration:.2f}s. "
                 "Please review the classification and confirm before extraction and sheet export."
             )
+            if learned_feedback:
+                upload.explanation += f" Applied a learned correction from prior feedback (#{learned_feedback.id})."
             upload.extracted_text_preview = combined_text[:500] + "..." if combined_text else ""
             upload.extracted_json = {
                 "stage": "classification_review",
@@ -1198,7 +1214,9 @@ def process_document_upload(upload, classification_only=False, classification_ov
                 "classification": classification_result,
                 "evidence_type": evidence_type,
                 "total_pages": total_pages,
-                "processing_time": f"{classification_duration:.2f}s"
+                "processing_time": f"{classification_duration:.2f}s",
+                "learned_from_feedback": bool(learned_feedback),
+                "feedback_reference_id": learned_feedback.id if learned_feedback else None,
             }
             upload.save()
             print(f"Classification stage complete ({classification_duration:.2f}s). Waiting for user confirmation.")
@@ -1258,6 +1276,7 @@ def process_document_upload(upload, classification_only=False, classification_ov
         upload.kra_confidence = classification_result.get("confidence")
         upload.criteria = classification_result.get("criterion")
         upload.sub_criteria = classification_result.get("sub_criterion")
+        upload.content_hash = content_hash
         
         upload.explanation = (
             f"Classified using '{priority_file['file_name']}'. "

@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import User, FacultyProfile, DocumentUpload
+from .models import User, FacultyProfile, DocumentUpload, ClassificationFeedback
 
 class FacultyProfileInline(admin.StackedInline):
     model = FacultyProfile
@@ -22,4 +22,25 @@ class DocumentUploadAdmin(admin.ModelAdmin):
     list_display = ('id', 'user', 'google_drive_link', 'status', 'created_at')
     list_filter = ('status', 'created_at')
     search_fields = ('user__username', 'user__email', 'google_drive_link')
+    readonly_fields = ('created_at',)
+
+
+@admin.register(ClassificationFeedback)
+class ClassificationFeedbackAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'upload',
+        'user',
+        'was_correct',
+        'predicted_primary_kra',
+        'corrected_primary_kra',
+        'created_at',
+    )
+    list_filter = ('was_correct', 'created_at')
+    search_fields = (
+        'user__username',
+        'user__email',
+        'upload__id',
+        'feedback_note',
+    )
     readonly_fields = ('created_at',)
