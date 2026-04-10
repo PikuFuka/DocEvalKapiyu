@@ -1,6 +1,7 @@
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils.crypto import get_random_string
+from urllib.parse import quote
 from sklearn import logger
 
 def generate_verification_token():
@@ -9,7 +10,9 @@ def generate_verification_token():
 
 def send_verification_email(user_email, verification_token):
     """Send email verification link to user."""
-    verification_link = f"{settings.FRONTEND_URL}/verify-email/{verification_token}/"
+    frontend_url = str(getattr(settings, 'FRONTEND_URL', '')).strip().rstrip('/')
+    encoded_token = quote(str(verification_token), safe='')
+    verification_link = f"{frontend_url}/verify-email?token={encoded_token}"
     subject = 'Email Verification - DocEvalKapiyu'
     message = f'Please click the link to verify your email: {verification_link}'
 

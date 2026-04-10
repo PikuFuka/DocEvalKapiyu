@@ -10,6 +10,10 @@ from api.services.analysis_engine import analyze_faculty_performance
 from ..services.cache_service import CACHE_TTL_MEDIUM, gap_analysis_cache_key
 
 
+def _is_truthy(value):
+    return str(value or '').strip().lower() in {'1', 'true', 'yes', 'y', 'on'}
+
+
 def _build_fallback_analytics_payload(current_rank="Instructor I", warning=None):
     summary = {
         "KRA I": {"A": 0.0, "B": 0.0, "C": 0.0, "Total": 0.0},
@@ -67,10 +71,13 @@ def faculty_gap_analysis(request):
         sheet_hash = hashlib.md5(profile.sheet_url.encode('utf-8')).hexdigest()[:12]
         rank_token = current_rank.lower().replace(' ', '_')
         cache_key = gap_analysis_cache_key(request.user.id, rank_token, sheet_hash)
+        cache_control = request.headers.get('Cache-Control', '')
+        bypass_cache = _is_truthy(request.query_params.get('refresh')) or ('no-cache' in cache_control.lower())
 
-        cached_data = cache.get(cache_key)
-        if cached_data is not None:
-            return Response(cached_data)
+        if not bypass_cache:
+            cached_data = cache.get(cache_key)
+            if cached_data is not None:
+                return Response(cached_data)
         
         # Run Engine with Rank
         data = analyze_faculty_performance(profile.sheet_url, current_rank)

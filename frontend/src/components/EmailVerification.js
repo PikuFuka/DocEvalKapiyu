@@ -1,16 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'framer-motion';
 
 
 const EmailVerification = () => {
-  const { token } = useParams();
+  const { token: routeToken } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const { verifyEmail } = useAuth();
+
+  const token = useMemo(() => {
+    const queryToken = new URLSearchParams(location.search).get('token');
+    return (routeToken || queryToken || '').trim().replace(/\/+$/, '');
+  }, [routeToken, location.search]);
 
   useEffect(() => {
     let isVerified = false;

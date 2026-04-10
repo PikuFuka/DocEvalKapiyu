@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import api from '../services/api';
+import api, { UPLOAD_QUEUE_REQUEST_CONFIG, extractUploadsArray } from '../services/api';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useNotification } from './Notification';
@@ -17,8 +17,9 @@ const Upload = () => {
     const checkPendingReviews = async () => {
       setCheckingQueue(true);
       try {
-        const response = await api.get('/user/uploads/');
-        const pending = response.data.filter((upload) => upload.status === 'for_review').length;
+        const response = await api.get('/user/uploads/', UPLOAD_QUEUE_REQUEST_CONFIG);
+        const uploads = extractUploadsArray(response.data);
+        const pending = uploads.filter((upload) => upload.status === 'for_review').length;
         setPendingReviewCount(pending);
       } catch (error) {
         console.error('Failed to check pending reviews:', error);
@@ -115,8 +116,9 @@ const Upload = () => {
     }
 
     try {
-      const queueResponse = await api.get('/user/uploads/');
-      const pending = queueResponse.data.filter((upload) => upload.status === 'for_review').length;
+      const queueResponse = await api.get('/user/uploads/', UPLOAD_QUEUE_REQUEST_CONFIG);
+      const queueUploads = extractUploadsArray(queueResponse.data);
+      const pending = queueUploads.filter((upload) => upload.status === 'for_review').length;
       setPendingReviewCount(pending);
 
       if (pending > 0) {

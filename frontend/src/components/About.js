@@ -84,6 +84,125 @@ const About = () => {
           background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
           border-radius: 2rem;
         }
+        .creator-showcase-wrap {
+          position: relative;
+          border-radius: 1.6rem;
+          padding: 1.4rem;
+          background: linear-gradient(160deg, rgba(255, 255, 255, 0.86) 0%, rgba(243, 249, 255, 0.95) 100%);
+          border: 1px solid rgba(13, 110, 253, 0.12);
+          box-shadow: 0 20px 42px -24px rgba(13, 70, 146, 0.35);
+          overflow: hidden;
+        }
+        .creator-showcase-wrap::before {
+          content: '';
+          position: absolute;
+          top: -100px;
+          right: -80px;
+          width: 240px;
+          height: 240px;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(13, 110, 253, 0.22) 0%, rgba(13, 110, 253, 0) 72%);
+          pointer-events: none;
+        }
+        .creator-modern-card {
+          position: relative;
+          height: 100%;
+          border-radius: 1.3rem;
+          border: 1px solid rgba(26, 83, 158, 0.16);
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(247, 251, 255, 0.88) 100%);
+          box-shadow: 0 14px 26px -20px rgba(18, 62, 126, 0.6);
+          padding: 1rem;
+          transition: transform 0.28s ease, box-shadow 0.28s ease, border-color 0.28s ease;
+        }
+        .creator-modern-card:hover {
+          transform: translateY(-7px);
+          border-color: rgba(13, 110, 253, 0.3);
+          box-shadow: 0 24px 36px -22px rgba(18, 62, 126, 0.52);
+        }
+        .creator-image-shell {
+          border-radius: 1rem;
+          padding: 7px;
+          background: linear-gradient(135deg, rgba(13, 110, 253, 0.2) 0%, rgba(13, 202, 240, 0.18) 45%, rgba(25, 135, 84, 0.16) 100%);
+        }
+        .creator-image-placeholder {
+          width: 100%;
+          aspect-ratio: 1 / 1;
+          border: 1.5px dashed rgba(13, 110, 253, 0.36);
+          border-radius: 0.9rem;
+          background:
+            radial-gradient(circle at 20% 20%, rgba(13, 110, 253, 0.11) 0%, rgba(13, 110, 253, 0) 45%),
+            radial-gradient(circle at 78% 78%, rgba(13, 202, 240, 0.12) 0%, rgba(13, 202, 240, 0) 38%),
+            linear-gradient(145deg, #f8fbff 0%, #eef5ff 100%);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          color: #224a7b;
+          gap: 0.35rem;
+          position: relative;
+          overflow: hidden;
+        }
+        .creator-image-placeholder::before {
+          content: '';
+          position: absolute;
+          inset: 0;
+          background-image: linear-gradient(90deg, rgba(13, 110, 253, 0.06) 1px, transparent 1px),
+                            linear-gradient(0deg, rgba(13, 110, 253, 0.06) 1px, transparent 1px);
+          background-size: 22px 22px;
+          opacity: 0.45;
+        }
+        .creator-image-placeholder i {
+          font-size: 2.05rem;
+          color: #0d6efd;
+          position: relative;
+          z-index: 1;
+        }
+        .creator-image-placeholder span {
+          position: relative;
+          z-index: 1;
+        }
+        .creator-placeholder-step {
+          position: absolute;
+          top: 12px;
+          right: 12px;
+          z-index: 1;
+          font-size: 0.68rem;
+          font-weight: 600;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          color: #2f5f99;
+          padding: 0.2rem 0.5rem;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.72);
+          border: 1px solid rgba(13, 110, 253, 0.2);
+        }
+        .creator-placeholder-title {
+          font-size: 0.9rem;
+          font-weight: 700;
+          text-align: center;
+        }
+        .creator-placeholder-note {
+          font-size: 0.75rem;
+          font-weight: 500;
+          color: #4d6990;
+        }
+        .creator-role-chip {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0.25rem 0.75rem;
+          border-radius: 999px;
+          font-size: 0.72rem;
+          font-weight: 700;
+          color: #0d4b97;
+          background: rgba(13, 110, 253, 0.1);
+          border: 1px solid rgba(13, 110, 253, 0.14);
+        }
+        @media (max-width: 991.98px) {
+          .creator-showcase-wrap {
+            padding: 1rem;
+          }
+        }
       `}</style>
 
       {/* HERO SECTION */}
@@ -154,53 +273,40 @@ const About = () => {
         </div>
       </section>
 
-      {/* OUR STORY / MISSION */}
+      {/* CREATED BY SECTION */}
       <section className="py-5 position-relative">
         <div className="container py-5">
-            <div className="row gx-5 align-items-center">
-                <div className="col-lg-6 mb-5 mb-lg-0" data-aos="fade-right">
-                    <div className="position-relative">
-                        <img 
-                            src="/images/image.png" 
-                            alt="Our Team" 
-                            className="img-fluid rounded-4 shadow-lg position-relative z-2"
-                        />
-                        {/* Decorative background accent */}
-                        <div className="position-absolute bg-warning top-0 start-0 translate-middle rounded-circle z-0" style={{width: '150px', height: '150px', opacity: 0.2}}></div>
-                        <div className="position-absolute bg-primary bottom-0 end-0 translate-middle rounded-circle z-3" style={{width: '100px', height: '100px', opacity: 0.1}}></div>
-                    </div>
-                </div>
-                <div className="col-lg-6" data-aos="fade-left">
-                    <h6 className="text-primary fw-bold text-uppercase ls-md mb-2">Our Story</h6>
-                    <h2 className="fw-bold mb-4 display-6">Bridging the Gap Between <br/>Policy and Practice</h2>
-                    <p className="text-muted mb-4 fs-5 fw-light">
-                        DocEvalKapiyu was born from a simple observation: <span className="text-dark fw-medium">Faculty evaluation shouldn't be a burden.</span>
-                    </p>
-                    <p className="text-secondary mb-4">
-                        Traditional methods often involve manual paperwork, subjective biases, and endless hours of sorting. We built a platform that leverages <strong>Machine Learning</strong> and <strong>Natural Language Processing</strong> to ensure every faculty member is evaluated fairly based on established criteria.
-                    </p>
-                    
-                    <div className="row g-4 mt-2">
-                        <div className="col-6">
-                            <div className="d-flex align-items-center">
-                                <i className="bi bi-shield-check fs-2 text-primary me-3"></i>
-                                <div>
-                                    <h5 className="fw-bold m-0">99.9%</h5>
-                                    <small className="text-muted">Accuracy</small>
-                                </div>
-                            </div>
+            <div className="text-center mb-5 mx-auto" style={{ maxWidth: '760px' }}>
+              <h6 className="text-primary fw-bold text-uppercase mb-2">Created By</h6>
+              <h2 className="fw-bold mb-3 display-6">The Team Behind DocEvalKapiyu</h2>
+              <p className="text-muted mb-0">
+                Replace each placeholder with your team photo to showcase the creators of this website.
+              </p>
+            </div>
+
+            <div className="creator-showcase-wrap">
+              <div className="row g-4 justify-content-center">
+                {[
+                  { name: 'Creator 1', role: 'Project Lead' },
+                  { name: 'Creator 2', role: 'Backend Developer' },
+                  { name: 'Creator 3', role: 'Frontend Developer' },
+                ].map((member, i) => (
+                  <div className="col-md-6 col-lg-4" key={i} data-aos="fade-up" data-aos-delay={i * 120}>
+                    <div className="creator-modern-card text-center">
+                      <div className="creator-image-shell mb-3">
+                        <div className="creator-image-placeholder">
+                          <span className="creator-placeholder-step">Slot {i + 1}</span>
+                          <i className="bi bi-image"></i>
+                          <span className="creator-placeholder-title">Team Photo Placeholder</span>
+                          <span className="creator-placeholder-note">Use square image, 1080 x 1080</span>
                         </div>
-                        <div className="col-6">
-                            <div className="d-flex align-items-center">
-                                <i className="bi bi-clock-history fs-2 text-primary me-3"></i>
-                                <div>
-                                    <h5 className="fw-bold m-0">10x</h5>
-                                    <small className="text-muted">Faster</small>
-                                </div>
-                            </div>
-                        </div>
+                      </div>
+                      <h5 className="fw-bold mb-1 text-dark">{member.name}</h5>
+                      <span className="creator-role-chip">{member.role}</span>
                     </div>
-                </div>
+                  </div>
+                ))}
+              </div>
             </div>
         </div>
       </section>
@@ -233,36 +339,6 @@ const About = () => {
                     </div>
                 </div>
             </div>
-        </div>
-      </section>
-
-      {/* CORE VALUES - Modern Cards */}
-      <section className="py-5">
-        <div className="container py-5">
-          <div className="text-center mb-5 mx-auto" style={{ maxWidth: '700px' }}>
-            <h6 className="text-primary fw-bold text-uppercase tracking-wide">Our Foundation</h6>
-            <h2 className="display-5 fw-bold mb-3">Our Core Values</h2>
-            <p className="text-muted lead">The principles that drive our commitment to academic integrity and innovation.</p>
-          </div>
-          
-          <div className="row g-4">
-            {[
-              { title: 'Transparency', desc: 'Eliminating ambiguity with open and clear evaluation processes.', icon: 'bi-eye', color: 'text-primary', bg: 'bg-primary' },
-              { title: 'Innovation', desc: 'Pushing boundaries by integrating state-of-the-art AI models.', icon: 'bi-cpu', color: 'text-info', bg: 'bg-info' },
-              { title: 'Integrity', desc: 'Unwavering commitment to fairness and objective scoring.', icon: 'bi-shield-lock', color: 'text-success', bg: 'bg-success' },
-              { title: 'Excellence', desc: 'Ensuring quality in every detail of the document lifecycle.', icon: 'bi-star', color: 'text-warning', bg: 'bg-warning' },
-            ].map((value, i) => (
-              <div className="col-md-6 col-lg-3" key={i} data-aos="fade-up" data-aos-delay={i * 100}>
-                <div className="card h-100 border-0 p-4 hover-card glass-card">
-                  <div className={`mb-4 d-inline-flex align-items-center justify-content-center ${value.bg} bg-opacity-10 rounded-3`} style={{ width: '60px', height: '60px' }}>
-                    <i className={`bi ${value.icon} fs-3 ${value.color}`}></i>
-                  </div>
-                  <h5 className="fw-bold mb-3">{value.title}</h5>
-                  <p className="text-muted small mb-0 lh-lg">{value.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 

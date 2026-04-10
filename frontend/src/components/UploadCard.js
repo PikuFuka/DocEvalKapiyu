@@ -3,6 +3,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Modal } from 'react-bootstrap';
+import './ModalV2.css';
 import api from '../services/api';
 import { useNotification } from './Notification';
 
@@ -55,8 +57,8 @@ const getSubSubCriterionOptions = (kra, criterion) => {
 };
 
 export const UploadCard = ({ upload, onUploadUpdated, showInlineReview = false }) => {
-  const [expanded, setExpanded] = useState(false);
   const [showText, setShowText] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [selectedKra, setSelectedKra] = useState(normalizeKra(upload.primary_kra));
   const [selectedCriterion, setSelectedCriterion] = useState(normalizeCriterion(upload.criteria));
@@ -142,6 +144,28 @@ export const UploadCard = ({ upload, onUploadUpdated, showInlineReview = false }
   };
 
   const statusInfo = getStatusInfo(upload.status);
+  const statusHeading = isCompleted
+    ? 'Document Evaluated'
+    : (isForReview ? 'Classification Ready' : (upload.status || 'Processing...'));
+
+  const getCardToneClass = (status) => {
+    switch (String(status || '').toLowerCase()) {
+      case 'completed':
+        return 'card-tone-completed';
+      case 'for_review':
+        return 'card-tone-review';
+      case 'processing':
+      case 'pending':
+        return 'card-tone-processing';
+      case 'failed':
+        return 'card-tone-failed';
+      default:
+        return 'card-tone-neutral';
+    }
+  };
+
+  const cardToneClass = getCardToneClass(upload.status);
+  const displayTitle = upload.source_filename || `Document #${upload.id}`;
 
   const getScoreColor = (score) => {
     // Requirement: score color should always be green even when low.
@@ -159,6 +183,17 @@ export const UploadCard = ({ upload, onUploadUpdated, showInlineReview = false }
   const score = upload.equivalent_percentage 
     ? parseFloat(String(upload.equivalent_percentage).replace('%','')) 
     : upload.total_score;
+
+  const scoreText = canShowScore
+    ? (score === 0 ? 'Need Manual Checking' : (upload.equivalent_percentage || `${Number(score).toFixed(1)} pts`))
+    : statusHeading;
+  const scoreDisplayClass = canShowScore && score !== 0 ? 'score-orb' : 'score-pill-inline';
+  const statusBadgeText = isCompleted ? 'Evaluated' : (isForReview ? 'For Review' : statusInfo.text);
+  const formattedDate = new Date(upload.created_at).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
 
   const handleConfirmClassification = async (event) => {
     event.stopPropagation();
@@ -194,100 +229,104 @@ export const UploadCard = ({ upload, onUploadUpdated, showInlineReview = false }
 
   return (
     <motion.div 
-      className="upload-card-modern upload-card-even h-100"
+      className={`upload-card-modern upload-card-even upload-card-clean h-100 ${cardToneClass}`}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
       layout
     >
       {/* Compact Header - Always Visible */}
-      <div 
-        className="card-header-compact"
-        onClick={() => isExpandable && setExpanded(!expanded)}
-        style={{ cursor: isExpandable ? 'pointer' : 'default' }}
-      >
-        <div className="header-left">
-          <div className="status-badge" style={{ backgroundColor: `${statusInfo.color}15`, color: statusInfo.color }}>
-            <i className={`bi ${statusInfo.icon} me-1`}></i>
-            {isCompleted ? 'Document Evaluated' : (isForReview ? 'Classification Ready' : (upload.status || 'Processing...'))}
-          </div>
-          <span className="upload-date">
-            <i className="bi bi-calendar3 me-1"></i>
-            {new Date(upload.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-          </span>
-          <span className="ms-2 fw-bold text-dark">
-             {upload.source_filename || `Document #${upload.id}`}
-          </span>
-        </div>
-        
-        <div className="header-right">
-          {canShowScore && (
-            <div className="score-pill" style={{ backgroundColor: score === 0 ? 'var(--warning-color)' : getScoreColor(score), color: score === 0 ? '#000' : 'white' }}>
-              {score === 0 ? 'Need Manual Checking' : (upload.equivalent_percentage || `${score}pts`)}
+      <div className="card-header-compact">
+        <div className="card-meta-top">
+          <div className="header-left header-meta-stack">
+            <div className="status-badge status-badge-card" style={{ backgroundColor: `${statusInfo.color}20`, color: statusInfo.color }}>
+              <i className={`bi ${statusInfo.icon} me-1`}></i>
+              {statusBadgeText}
             </div>
-          )}
-          <span className={`status-dot ${statusInfo.className}`} title={statusInfo.text}></span>
-          {isExpandable && (
-            <i className={`bi bi-chevron-${expanded ? 'up' : 'down'} expand-icon`}></i>
-          )}
+            <span className="upload-date upload-date-pill upload-date-card">{formattedDate}</span>
+          </div>
+        </div>
+
+        <div className="header-left">
+          <span className="clean-card-title text-dark" title={displayTitle}>
+            {displayTitle}
+          </span>
         </div>
       </div>
 
       {/* Result Bar - Always Visible for completed/review */}
       {(isCompleted || isForReview) && (
-        <div className="result-bar">
+        <div className="result-bar result-bar-clean">
           <div className="result-item">
-            <span className="result-label"><i className="bi bi-bookmark-star me-1"></i> KRA</span>
-            <span className="result-value">{displayKra}</span>
+            <span className="result-chip">KRA {displayKra}</span>
           </div>
           <div className="result-item">
-            <span className="result-label"><i className="bi bi-list-check me-1"></i> Criterion</span>
-            <span className="result-value">{displayCriterion}</span>
+            <span className="result-chip">CRITERION {displayCriterion}</span>
           </div>
           <div className="result-item">
-            <span className="result-label"><i className="bi bi-layers me-1"></i> Sub-Subcriterion</span>
-            <span className="result-value">{displaySubSubCriterion}</span>
+            <span className="result-chip">SUB-SUBCRITERION {displaySubSubCriterion}</span>
           </div>
         </div>
       )}
 
       {/* Quick Info Row */}
       <div className="quick-info-row">
-        <a 
-          href={upload.google_drive_link} 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="drive-link"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <i className="bi bi-google me-1"></i>
-          View Document
-        </a>
-        
-        {upload.classification_time && (
-          <span className="info-time-badge ms-2">
-            <i className="bi bi-clock me-1"></i>
-            Classification: {parseFloat(upload.classification_time).toFixed(1)}s
-          </span>
-        )}
-        
-        {upload.total_processing_time && (
-          <span className="info-time-badge ms-2">
-            <i className="bi bi-cpu me-1"></i>
-            Total: {parseFloat(upload.total_processing_time).toFixed(1)}s
-          </span>
-        )}
+        <div className="quick-info-main">
+          <div className={`score-pill score-pill-clean ${scoreDisplayClass}`} style={{ backgroundColor: score === 0 ? 'var(--warning-color)' : getScoreColor(score), color: score === 0 ? '#1f2937' : 'white' }}>
+            {scoreText}
+          </div>
 
-        {isForReview && !showInlineReview && (
-          <Link
-            to="/classification-review"
-            className="btn btn-sm btn-outline-primary rounded-pill px-3 ms-auto"
+          {upload.classification_time && (
+            <span className="info-time-badge info-time-inline" title="Classification time">
+              <i className="bi bi-clock me-1"></i>
+              {parseFloat(upload.classification_time).toFixed(1)}s
+            </span>
+          )}
+
+          {upload.total_processing_time && (
+            <span className="info-time-badge info-time-inline" title="Total processing time">
+              <i className="bi bi-cpu me-1"></i>
+              {parseFloat(upload.total_processing_time).toFixed(1)}s
+            </span>
+          )}
+        </div>
+
+        <div className="quick-info-actions">
+          <a 
+            href={upload.google_drive_link} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="drive-link drive-link-clean"
             onClick={(e) => e.stopPropagation()}
           >
-            <i className="bi bi-arrow-up-right-square me-1"></i>
-            Review Queue
-          </Link>
-        )}
+            <i className="bi bi-google me-1"></i>
+            Open
+          </a>
+
+          {isForReview && !showInlineReview && (
+            <Link
+              to="/classification-review"
+              className="card-action-btn card-action-btn-secondary"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <i className="bi bi-arrow-up-right-square me-1"></i>
+              Review Queue
+            </Link>
+          )}
+
+          {isExpandable && (
+            <button
+              type="button"
+              className="card-action-btn card-action-btn-primary"
+              onClick={(event) => {
+                event.stopPropagation();
+                setShowModal(true);
+              }}
+            >
+              Details
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Review Action */}
@@ -353,11 +392,7 @@ export const UploadCard = ({ upload, onUploadUpdated, showInlineReview = false }
               </div>
             </div>
 
-            <div className="classification-review-footer d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mt-3 pt-3">
-              <small className="classification-review-selected">
-                Selected output: KRA {displayKra} / {displayCriterion} / {displaySubSubCriterion}
-              </small>
-
+            <div className="classification-review-footer d-flex flex-column flex-sm-row justify-content-end align-items-sm-center gap-2 mt-3 pt-3">
               <button
                 type="button"
                 className="btn btn-dark btn-sm classification-confirm-btn"
@@ -401,97 +436,135 @@ export const UploadCard = ({ upload, onUploadUpdated, showInlineReview = false }
         </div>
       )}
 
-      {/* Expandable Details */}
-      <AnimatePresence>
-        {expanded && isExpandable && (
-          <motion.div 
-            className="expanded-details"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <div className="details-grid">
-              {/* Classification Section */}
-              <div className="detail-section">
-                <h6 className="section-title">
-                  <i className="bi bi-tags me-2"></i>Classification
-                </h6>
-                <div className="detail-items">
-                  <div className="detail-item">
-                    <span className="label">KRA</span>
-                    <span className="value">{displayKra}</span>
-                  </div>
-                  {upload.kra_confidence !== null && (
-                    <div className="detail-item">
-                      <span className="label">Confidence</span>
-                      <span 
-                        className="value confidence-value"
-                        style={{ color: getConfidenceLevel(upload.kra_confidence).color }}
-                      >
-                        {upload.kra_confidence}% ({getConfidenceLevel(upload.kra_confidence).text})
-                      </span>
-                    </div>
-                  )}
-                  <div className="detail-item">
-                    <span className="label">Criteria</span>
-                    <span className="value">{displayCriterion}</span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="label">Sub-Subcriterion</span>
-                    <span className="value">{displaySubSubCriterion}</span>
-                  </div>
+      {/* Details Modal */}
+      <Modal 
+        show={showModal} 
+        onHide={() => setShowModal(false)}
+        centered
+        size="lg"
+        scrollable
+        className="upload-details-modal-v2"
+      >
+        <Modal.Header closeButton className="border-0 px-4 pt-4 pb-2 bg-white">
+          <Modal.Title className="h5 fw-bolder text-dark mb-0">Document Details</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="p-4 modal-body-tinted">
+          <div className="modal-document-header-v2 mb-4 p-4 shadow-sm bg-white">
+            <div className="d-flex flex-column gap-3">
+              <div className="d-flex align-items-center gap-2 flex-wrap">
+                <div className="badge-modern-status" style={{ color: statusInfo.color, borderColor: `${statusInfo.color}40`, backgroundColor: `${statusInfo.color}10` }}>
+                  <i className={`bi ${statusInfo.icon} me-1`}></i>
+                  <span className="text-capitalize">{statusBadgeText?.toLowerCase()}</span>
+                </div>
+                <div className="badge-modern-date text-nowrap">
+                  {formattedDate}
                 </div>
               </div>
-
-              {/* Document Info Section */}
-              <div className="detail-section">
-                <h6 className="section-title">
-                  <i className="bi bi-file-text me-2"></i>Document Info
-                </h6>
-                <div className="detail-items">
-                  <div className="detail-item">
-                    <span className="label">Pages</span>
-                    <span className="value">{upload.page_count ?? 'N/A'}</span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="label">Extracted Text</span>
-                    <button 
-                      className="text-toggle-btn"
-                      onClick={(e) => { e.stopPropagation(); setShowText(!showText); }}
-                    >
-                      {showText ? 'Hide' : 'Preview'} <i className={`bi bi-eye${showText ? '-slash' : ''}`}></i>
-                    </button>
-                  </div>
+              
+              <div className="modal-doc-info-v2">
+                <div className="d-flex align-items-center text-muted small fw-bold text-uppercase letter-spacing-1 mb-2">
+                  <i className="bi bi-file-earmark-pdf me-2"></i> Source Filename
                 </div>
-                
-                <AnimatePresence>
-                  {showText && (
-                    <motion.div 
-                      className="text-preview"
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
+                <div className="h5 fw-bold text-dark mb-0 line-clamp-2 lh-base">{displayTitle}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="details-grid-v2">
+            {/* Classification Section */}
+            <div className="detail-section-v2">
+              <h6 className="section-title-v2">
+                <i className="bi bi-tags-fill me-2 text-primary"></i>Classification
+              </h6>
+              <div className="detail-items-v2">
+                <div className="detail-item-v2">
+                  <span className="label">KRA</span>
+                  <span className="value">{displayKra}</span>
+                </div>
+                {upload.kra_confidence !== null && (
+                  <div className="detail-item-v2">
+                    <span className="label">Confidence</span>
+                    <span 
+                      className="value confidence-value-v2"
+                      style={{ color: getConfidenceLevel(upload.kra_confidence).color, fontWeight: 700 }}
                     >
-                      {upload.extracted_text_preview || 'No preview available.'}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                      {upload.kra_confidence}% ({getConfidenceLevel(upload.kra_confidence).text})
+                    </span>
+                  </div>
+                )}
+                <div className="detail-item-v2">
+                  <span className="label">Criteria</span>
+                  <span className="value">{displayCriterion}</span>
+                </div>
+                <div className="detail-item-v2">
+                  <span className="label">Sub-Subcriterion</span>
+                  <span className="value">{displaySubSubCriterion}</span>
+                </div>
               </div>
             </div>
 
-            {/* Analysis Explanation */}
-            {upload.explanation && (
-              <div className="analysis-section">
-                <h6 className="section-title">
-                  <i className="bi bi-lightbulb me-2"></i>Analysis
-                </h6>
-                <p className="analysis-text">{upload.explanation}</p>
+            {/* Document Info Section */}
+            <div className="detail-section-v2">
+              <h6 className="section-title-v2">
+                <i className="bi bi-file-earmark-text-fill me-2 text-primary"></i>Document Info
+              </h6>
+              <div className="detail-items-v2">
+                <div className="detail-item-v2">
+                  <span className="label">Pages</span>
+                  <span className="value">{upload.page_count ?? 'N/A'}</span>
+                </div>
+                <div className="detail-item-v2">
+                  <span className="label">Extracted Text</span>
+                  <button 
+                    className="btn-preview-v2"
+                    onClick={(e) => { e.stopPropagation(); setShowText(!showText); }}
+                  >
+                    Preview <i className={`bi bi-eye${showText ? '-slash' : ''} ms-1`}></i>
+                  </button>
+                </div>
               </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+              
+              <AnimatePresence>
+                {showText && (
+                  <motion.div 
+                    className="text-preview-v2"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                  >
+                    {upload.extracted_text_preview || 'No preview available.'}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
+
+          {/* Analysis Explanation */}
+          {upload.explanation && (
+            <div className="analysis-section-v2 mt-4">
+              <div className="analysis-inner-v2">
+                <h6 className="section-title-v2">
+                  <i className="bi bi-lightbulb-fill me-2 text-warning"></i>Analysis
+                </h6>
+                <p className="analysis-text-v2">{upload.explanation}</p>
+              </div>
+            </div>
+          )}
+        </Modal.Body>
+        <Modal.Footer className="border-0 px-4 py-3 bg-white">
+          <button className="btn-modal-secondary-v2 w-sm-100" onClick={() => setShowModal(false)}>
+            Close
+          </button>
+          <a 
+            href={upload.google_drive_link} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="btn-modal-primary-v2 w-sm-100 justify-content-center"
+          >
+            <i className="bi bi-google me-2"></i>Open in Drive
+          </a>
+        </Modal.Footer>
+      </Modal>
     </motion.div>
   );
 };

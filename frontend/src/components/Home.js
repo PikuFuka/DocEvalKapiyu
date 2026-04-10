@@ -182,38 +182,6 @@ const Home = () => {
         </div>
       </section>
 
-      {/* How It Works - Centered & Clean */}
-      <section className="py-5">
-        <div className="container py-5">
-          <div className="text-center mb-5">
-            <h2 className="fw-bold display-6">How It Works</h2>
-            <p className="text-muted">Simple steps to automated evaluation</p>
-          </div>
-
-          <div className="row g-4 justify-content-center">
-            {[
-              { step: '1', title: 'Upload', desc: 'Submit via Drive link', icon: 'bi-cloud-arrow-up' },
-              { step: '2', title: 'Process', desc: 'AI analyzes content', icon: 'bi-gear-wide-connected' },
-              { step: '3', title: 'Score', desc: 'Automated calculation', icon: 'bi-check-circle' },
-              { step: '4', title: 'Result', desc: 'View detailed report', icon: 'bi-file-earmark-bar-graph' },
-            ].map((process, i) => (
-              <div className="col-md-6 col-lg-3" key={i} data-aos="fade-up" data-aos-delay={i * 100}>
-                <div className="card border-0 shadow-sm rounded-4 p-4 text-center h-100 position-relative overflow-hidden hover-lift bg-white bg-opacity-70 backdrop-blur">
-                  <div className="position-relative z-1">
-                    <div className="mb-3 mx-auto d-flex align-items-center justify-content-center rounded-circle bg-primary text-white fw-bold shadow-sm" 
-                         style={{width: '60px', height: '60px', fontSize: '1.5rem'}}>
-                      <i className={`bi ${process.icon}`}></i>
-                    </div>
-                    <h5 className="fw-bold mb-2">{process.title}</h5>
-                    <p className="text-muted small mb-0">{process.desc}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Footer - Centered & Polished */}
       <footer className="py-5 mt-5">
         <div className="container">

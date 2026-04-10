@@ -9,6 +9,22 @@ const api = axios.create({
   baseURL: API_BASE_URL,
 });
 
+export const UPLOAD_QUEUE_REQUEST_CONFIG = {
+  timeout: 15000,
+};
+
+export const extractUploadsArray = (payload) => {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  if (Array.isArray(payload?.results)) {
+    return payload.results;
+  }
+
+  return [];
+};
+
 // --- Define Public Endpoints ---
 // Add all API endpoints that should NOT have an Authorization header
 const PUBLIC_ENDPOINTS = [

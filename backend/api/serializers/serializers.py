@@ -57,6 +57,13 @@ class DocumentUploadSerializer(serializers.ModelSerializer):
             obj.equivalent_percentage is not None or obj.total_score is not None or obj.primary_kra is not None
         )
 
+
+class DocumentUploadListSerializer(DocumentUploadSerializer):
+    """Lightweight serializer for list endpoints to avoid transferring heavy extracted payloads."""
+
+    class Meta(DocumentUploadSerializer.Meta):
+        fields = [field for field in DocumentUploadSerializer.Meta.fields if field != 'extracted_json']
+
 class AdminUserSerializer(serializers.ModelSerializer):
     faculty_profile = FacultyProfileSerializer(read_only=True)
     total_uploads = serializers.SerializerMethodField()

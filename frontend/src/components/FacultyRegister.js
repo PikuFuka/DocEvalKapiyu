@@ -50,7 +50,7 @@ const FacultyRegister = () => {
   };
 
   const goToStep2 = () => {
-    const requiredStep1 = ["first_name", "last_name", "email", "password"];
+    const requiredStep1 = ["last_name", "first_name", "middle_name", "email", "password"];
     const missing = requiredStep1.find(key => !formData[key]?.toString().trim());
     if (missing) {
       notify.error("Please fill all required personal information before continuing.");
@@ -63,8 +63,21 @@ const FacultyRegister = () => {
     e.preventDefault();
     setLoading(true);
 
-    if (!formData.date_of_appointment) {
-      notify.error("Please select Date of Appointment.");
+    const requiredStep2 = [
+      "degree_name",
+      "hei_name",
+      "year_graduated",
+      "faculty_rank",
+      "mode_of_appointment",
+      "date_of_appointment",
+      "suc_name",
+      "campus",
+      "address",
+    ];
+
+    const missingStep2 = requiredStep2.find((key) => !formData[key]?.toString().trim());
+    if (missingStep2) {
+      notify.error("Please complete all academic and appointment fields.");
       setStep(2);
       setLoading(false);
       return;
@@ -73,7 +86,19 @@ const FacultyRegister = () => {
     const payload = { 
       ...formData, 
       username: formData.username?.trim() || formData.email?.trim(),
-      middle_initial: formData.middle_name
+      first_name: formData.first_name?.trim(),
+      middle_name: formData.middle_name?.trim(),
+      last_name: formData.last_name?.trim(),
+      email: formData.email?.trim().toLowerCase(),
+      degree_name: formData.degree_name?.trim(),
+      hei_name: formData.hei_name?.trim(),
+      year_graduated: formData.year_graduated,
+      faculty_rank: formData.faculty_rank?.trim(),
+      mode_of_appointment: formData.mode_of_appointment?.trim(),
+      date_of_appointment: formData.date_of_appointment,
+      suc_name: formData.suc_name?.trim(),
+      campus: formData.campus?.trim(),
+      address: formData.address?.trim(),
     };
 
     try {
@@ -148,17 +173,17 @@ const FacultyRegister = () => {
                   transition={{ duration: 0.3 }}
                 >
                   <div className="row g-2 align-items-end">
-                    <div className="col-md-5">
-                      <label className="register-label">First Name</label>
-                      <input type="text" name="first_name" value={formData.first_name} onChange={handleChange} className="register-input py-2" placeholder="Juan" required />
-                    </div>
-                    <div className="col-md-2">
-                      <label className="register-label text-center d-block small">M.I.</label>
-                      <input type="text" name="middle_name" value={formData.middle_name} onChange={handleChange} className="register-input text-center py-2 px-0" placeholder="D." maxLength="2" />
-                    </div>
-                    <div className="col-md-5">
+                    <div className="col-md-4">
                       <label className="register-label">Last Name</label>
                       <input type="text" name="last_name" value={formData.last_name} onChange={handleChange} className="register-input py-2" placeholder="Dela Cruz" required />
+                    </div>
+                    <div className="col-md-4">
+                      <label className="register-label">First Name, Ext.</label>
+                      <input type="text" name="first_name" value={formData.first_name} onChange={handleChange} className="register-input py-2" placeholder="Juan D." required />
+                    </div>
+                    <div className="col-md-4">
+                      <label className="register-label">Middle Name</label>
+                      <input type="text" name="middle_name" value={formData.middle_name} onChange={handleChange} className="register-input py-2" placeholder="De Guzman" required />
                     </div>
 
                     <div className="col-12 mt-2">
@@ -194,29 +219,38 @@ const FacultyRegister = () => {
                 >
                   <div className="row g-2 align-items-end">
                     <div className="col-md-8">
-                        <label className="register-label">HEI Name (Graduated)</label>
-                        <input type="text" name="hei_name" value={formData.hei_name} onChange={handleChange} className="register-input py-2" placeholder="University Name" required />
+                      <label className="register-label">Name of Degree</label>
+                      <input type="text" name="degree_name" value={formData.degree_name} onChange={handleChange} className="register-input py-2" placeholder="PhD in ..." required />
                     </div>
                     <div className="col-md-4">
-                        <label className="register-label">Year</label>
-                        <input type="number" name="year_graduated" value={formData.year_graduated} onChange={handleChange} className="register-input py-2" placeholder="2020" required />
+                      <label className="register-label">Year Graduated</label>
+                      <input type="number" name="year_graduated" value={formData.year_graduated} onChange={handleChange} className="register-input py-2" placeholder="2020" min="1900" max={new Date().getFullYear()} required />
                     </div>
                     
                     <div className="col-12 mt-1">
-                        <label className="register-label">Highest Degree Earned</label>
-                        <input type="text" name="degree_name" value={formData.degree_name} onChange={handleChange} className="register-input py-2" placeholder="Master of Science in IT" required />
+                      <label className="register-label">Name of HEI</label>
+                      <input type="text" name="hei_name" value={formData.hei_name} onChange={handleChange} className="register-input py-2" placeholder="De La Salle University" required />
                     </div>
 
                     <div className="col-md-6 mt-1">
-                        <label className="register-label">Faculty Rank</label>
+                      <label className="register-label">Current Faculty Rank</label>
                         <select name="faculty_rank" value={formData.faculty_rank} onChange={handleChange} className="register-input py-2" required>
                             <option value="">Select Rank</option>
                             {facultyRanks.map(rank => <option key={rank} value={rank}>{rank}</option>)}
                         </select>
                     </div>
                     <div className="col-md-6 mt-1">
+                      <label className="register-label">Mode of Appointment</label>
+                      <input type="text" name="mode_of_appointment" value={formData.mode_of_appointment} onChange={handleChange} className="register-input py-2" placeholder="NBC 461" required />
+                    </div>
+
+                    <div className="col-md-6 mt-1">
                         <label className="register-label">Appointment Date</label>
                         <input type="date" name="date_of_appointment" value={formData.date_of_appointment} onChange={handleChange} className="register-input py-2" required />
+                    </div>
+                    <div className="col-md-6 mt-1">
+                      <label className="register-label">Name of SUC</label>
+                      <input type="text" name="suc_name" value={formData.suc_name} onChange={handleChange} className="register-input py-2" placeholder="Laguna State Polytechnic University" required />
                     </div>
 
                     <div className="col-md-6 mt-1">

@@ -6,7 +6,8 @@ from django.core.cache import cache
 
 from ..models import DocumentUpload
 from ..serializers import (
-    DocumentUploadSerializer
+    DocumentUploadSerializer,
+    DocumentUploadListSerializer,
 )
 from ..services.document_processing_service import (
     process_document_upload,
@@ -73,6 +74,14 @@ class DocumentUploadView(generics.ListCreateAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Duplicate check before accepting batch
+        for link in links:
+            if DocumentUpload.objects.filter(user=request.user, google_drive_link__iexact=link).exists():
+                return Response(
+                    {'error': f'Duplicate document detected: The link has already been uploaded.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
         serializers = []
         for link in links:
             serializer = self.get_serializer(data={'google_drive_link': link})
@@ -137,7 +146,7 @@ def user_uploads_list(request):
         return Response(cached_payload)
 
     uploads = DocumentUpload.objects.filter(user=request.user).order_by('-created_at')
-    serializer = DocumentUploadSerializer(uploads, many=True)
+    serializer = DocumentUploadListSerializer(uploads, many=True)
     payload = serializer.data
 
     try:

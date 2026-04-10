@@ -1,22 +1,12 @@
 //frontend/src/components/AnalyticsDashboard.js
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import api from "../services/api";
 import RecommendationPanel from "./RecommendationPanel";
 
-// --- Design Configuration ---
-const COLORS = {
-  primary: ['#6366f1', '#818cf8'], // Indigo
-  secondary: ['#ec4899', '#f472b6'], // Pink
-  success: ['#10b981', '#34d399'], // Emerald
-  warning: ['#f59e0b', '#fbbf24'], // Amber
-  info: ['#06b6d4', '#22d3ee'], // Cyan
-  dark: '#1e293b',
-  light: '#f8fafc'
-};
-
 const DEFAULT_CAPS = { "KRA I": 100, "KRA II": 100, "KRA III": 100, "KRA IV": 100 };
+const ANALYTICS_REQUEST_CONFIG = { timeout: 20000 };
 const KRA_SUB_LABELS = {
   "KRA I": [
     { key: "A", name: "Teaching Effectiveness", cap: 60 },
@@ -47,20 +37,117 @@ function safeNum(v) {
   return typeof n === "number" && !Number.isNaN(n) ? n : 0;
 }
 
+function getAnalyticsErrorMessage(err) {
+  if (!err) return "Unable to load analytics right now.";
+
+  if (err.code === "ECONNABORTED") {
+    return "Analytics request timed out. Please try again.";
+  }
+
+  if (!err.response) {
+    return "Cannot connect to the server. Please make sure the backend is running.";
+  }
+
+  if (err.response.status >= 500) {
+    return "A server error occurred while loading analytics.";
+  }
+
+  const payload = err.response.data;
+  if (typeof payload === "string") {
+    if (payload.includes("<html")) {
+      return "A server error occurred. Please try again.";
+    }
+    return payload;
+  }
+
+  if (payload?.detail) return payload.detail;
+  if (payload?.error) return payload.error;
+
+  return "Failed to load analytics.";
+}
+
 export default function AnalyticsDashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [syncNotice, setSyncNotice] = useState(null);
+  const requestInFlightRef = useRef(false);
+  const latestDataRef = useRef(null);
 
   useEffect(() => {
-    api.get("/analytics/gap-analysis/")
-      .then(res => { setData(res.data); setLoading(false); })
-      .catch(err => { 
-        console.error(err); 
-        setError(err.response?.data || "Failed to load"); 
-        setLoading(false); 
+    latestDataRef.current = data;
+  }, [data]);
+
+  const fetchAnalytics = useCallback(async ({ forceFresh = false, background = false } = {}) => {
+    if (requestInFlightRef.current) {
+      return;
+    }
+
+    requestInFlightRef.current = true;
+
+    if (background) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+
+    try {
+      const endpoint = forceFresh ? "/analytics/gap-analysis/?refresh=1" : "/analytics/gap-analysis/";
+      const response = await api.get(endpoint, {
+        ...ANALYTICS_REQUEST_CONFIG,
+        headers: forceFresh ? { "Cache-Control": "no-cache" } : undefined,
       });
+      setData(response.data);
+      setError(null);
+      setSyncNotice(null);
+    } catch (primaryError) {
+      console.error(primaryError);
+
+      if (forceFresh) {
+        try {
+          const cachedResponse = await api.get("/analytics/gap-analysis/", ANALYTICS_REQUEST_CONFIG);
+          setData(cachedResponse.data);
+          setError(null);
+          setSyncNotice("Live sheet sync failed. Showing latest cached analytics.");
+          return;
+        } catch (fallbackError) {
+          console.error(fallbackError);
+          const message = getAnalyticsErrorMessage(fallbackError);
+          if (latestDataRef.current || background) {
+            setSyncNotice(message);
+          } else {
+            setError(message);
+          }
+          return;
+        }
+      }
+
+      const message = getAnalyticsErrorMessage(primaryError);
+      if (latestDataRef.current || background) {
+        setSyncNotice(message);
+      } else {
+        setError(message);
+      }
+    } finally {
+      requestInFlightRef.current = false;
+      if (background) {
+        setRefreshing(false);
+      } else {
+        setLoading(false);
+      }
+    }
   }, []);
+
+  useEffect(() => {
+    fetchAnalytics({ forceFresh: false });
+
+    const interval = setInterval(() => {
+      fetchAnalytics({ forceFresh: true, background: true });
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [fetchAnalytics]);
 
   const normalized = useMemo(() => {
     if (!data) return null;
@@ -139,7 +226,33 @@ export default function AnalyticsDashboard() {
     const errorMessage = typeof error === "string"
       ? error
       : (error?.error || error?.detail || "Unable to load analytics data.");
-    return <div className="p-5 text-center text-danger">{errorMessage}</div>;
+    return (
+      <div className="min-vh-100 d-flex align-items-center justify-content-center p-4" style={{ background: "#f8fafc" }}>
+        <div className="card border-0 shadow-sm rounded-4 p-4 p-md-5 text-center" style={{ maxWidth: "680px", width: "100%" }}>
+          <div className="mx-auto mb-3 rounded-circle bg-danger bg-opacity-10 d-flex align-items-center justify-content-center" style={{ width: "64px", height: "64px" }}>
+            <i className="bi bi-wifi-off text-danger fs-3"></i>
+          </div>
+          <h4 className="fw-bold text-dark mb-2">Unable to load gap analysis</h4>
+          <p className="text-muted mb-4">{errorMessage}</p>
+          <div className="d-flex flex-wrap gap-2 justify-content-center">
+            <button
+              type="button"
+              className="btn btn-primary rounded-pill px-4"
+              onClick={() => fetchAnalytics({ forceFresh: false })}
+            >
+              Retry
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline-primary rounded-pill px-4"
+              onClick={() => fetchAnalytics({ forceFresh: true })}
+            >
+              Retry Live Sync
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
   if (!normalized) return null;
 
@@ -175,6 +288,13 @@ export default function AnalyticsDashboard() {
       </div>
 
       <div className="container position-relative z-1">
+        {syncNotice && (
+          <div className="alert alert-info border-0 shadow-sm rounded-4 mb-4" role="alert">
+            <i className="bi bi-info-circle-fill me-2"></i>
+            {syncNotice}
+          </div>
+        )}
+
         {data?.warning && (
           <div className="alert alert-warning border-0 shadow-sm rounded-4 mb-4" role="alert">
             <i className="bi bi-exclamation-triangle-fill me-2"></i>
@@ -191,9 +311,29 @@ export default function AnalyticsDashboard() {
             <h1 className="fw-bold text-dark mb-1" style={{ letterSpacing: '-1px' }}>NBC 461 Analytics</h1>
             <p className="text-muted mb-0">Cycle 9 Faculty Reclassification & Performance Overview</p>
           </div>
-          <div className="d-none d-md-block text-end">
-            <div className="small text-uppercase text-muted fw-bold tracking-wide">Current Cycle</div>
-            <div className="h5 mb-0 fw-bold text-primary">2023-2026</div>
+          <div className="d-flex flex-column align-items-end gap-2">
+            <button
+              type="button"
+              className="btn btn-outline-primary rounded-pill px-3 py-2 fw-bold"
+              onClick={() => fetchAnalytics({ forceFresh: true, background: true })}
+              disabled={refreshing}
+            >
+              {refreshing ? (
+                <span className="d-flex align-items-center gap-2">
+                  <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                  Syncing...
+                </span>
+              ) : (
+                <>
+                  <i className="bi bi-arrow-clockwise me-2"></i>
+                  Sync from Sheet
+                </>
+              )}
+            </button>
+            <div className="text-end">
+              <div className="small text-uppercase text-muted fw-bold tracking-wide">Current Cycle</div>
+              <div className="h5 mb-0 fw-bold text-primary">2023-2026</div>
+            </div>
           </div>
         </motion.header>
 
