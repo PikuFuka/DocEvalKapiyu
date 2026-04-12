@@ -123,6 +123,20 @@ const About = () => {
           border-radius: 1rem;
           padding: 7px;
           background: linear-gradient(135deg, rgba(13, 110, 253, 0.2) 0%, rgba(13, 202, 240, 0.18) 45%, rgba(25, 135, 84, 0.16) 100%);
+          overflow: hidden;
+        }
+        .creator-image-wrap {
+          width: 100%;
+          aspect-ratio: 1 / 1;
+          border-radius: 0.9rem;
+          overflow: hidden;
+          background: #f8fbff;
+        }
+        .creator-image-wrap img {
+          width: 100%;
+          height: 100%;
+          object-fit: fill;
+          display: block;
         }
         .creator-image-placeholder {
           width: 100%;
@@ -279,30 +293,37 @@ const About = () => {
             <div className="text-center mb-5 mx-auto" style={{ maxWidth: '760px' }}>
               <h6 className="text-primary fw-bold text-uppercase mb-2">Created By</h6>
               <h2 className="fw-bold mb-3 display-6">The Team Behind DocEvalKapiyu</h2>
-              <p className="text-muted mb-0">
-                Replace each placeholder with your team photo to showcase the creators of this website.
-              </p>
             </div>
 
             <div className="creator-showcase-wrap">
               <div className="row g-4 justify-content-center">
                 {[
-                  { name: 'Creator 1', role: 'Project Lead' },
-                  { name: 'Creator 2', role: 'Backend Developer' },
-                  { name: 'Creator 3', role: 'Frontend Developer' },
+                  { name: 'Jethro Marquez', role: 'Student', img: '/images/Image 1.png' },
+                  { name: 'Gabriel Scott Santos', role: 'Student', img: '/images/Image 2.png' },
+                  { name: 'Rolan Sotomayor', role: 'Student', img: '/images/Image 3.png' },
                 ].map((member, i) => (
                   <div className="col-md-6 col-lg-4" key={i} data-aos="fade-up" data-aos-delay={i * 120}>
                     <div className="creator-modern-card text-center">
                       <div className="creator-image-shell mb-3">
-                        <div className="creator-image-placeholder">
-                          <span className="creator-placeholder-step">Slot {i + 1}</span>
-                          <i className="bi bi-image"></i>
-                          <span className="creator-placeholder-title">Team Photo Placeholder</span>
-                          <span className="creator-placeholder-note">Use square image, 1080 x 1080</span>
+                        <div className="creator-image-wrap">
+                          <img 
+                            src={member.img} 
+                            alt={member.name}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextElementSibling.style.display = 'flex';
+                            }}
+                          />
+                          <div className="creator-image-placeholder" style={{ display: 'none' }}>
+                            <span className="creator-placeholder-step">Image {i + 1}</span>
+                            <i className="bi bi-person-circle"></i>
+                            <h5 className="creator-placeholder-title mb-1">{member.name}</h5>
+                            <span className="creator-placeholder-note text-uppercase tracking-wider fw-bold" style={{fontSize: '0.65rem', color: '#0d6efd'}}>{member.role}</span>
+                          </div>
                         </div>
                       </div>
                       <h5 className="fw-bold mb-1 text-dark">{member.name}</h5>
-                      <span className="creator-role-chip">{member.role}</span>
+                      <span className="creator-role-chip px-3">{member.role}</span>
                     </div>
                   </div>
                 ))}

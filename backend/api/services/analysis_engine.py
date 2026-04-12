@@ -159,7 +159,8 @@ def fetch_range_data(service, spreadsheet_id, range_name):
         return result.get('values', [])
     except Exception as e:
         print(f"Error fetching range {range_name}: {e}")
-        return []
+        # Propagate error so caller knows sync failed
+        return {"error": str(e)}
 
 # =========================================================
 # MAIN ANALYZER FUNCTION
@@ -183,6 +184,9 @@ def analyze_faculty_performance(sheet_url, current_rank="Instructor I"):
     range_name = "'ISS-FACULTY'!P10:P30" 
     raw_data = fetch_range_data(service, spreadsheet_id, range_name)
     
+    if isinstance(raw_data, dict) and "error" in raw_data:
+        return raw_data
+
     scores = {
         "KRA I": {"A": 0, "B": 0, "C": 0, "Total": 0},
         "KRA II": {"A": 0, "B": 0, "C": 0, "Total": 0},

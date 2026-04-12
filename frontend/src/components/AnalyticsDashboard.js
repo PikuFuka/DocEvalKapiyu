@@ -141,12 +141,6 @@ export default function AnalyticsDashboard() {
 
   useEffect(() => {
     fetchAnalytics({ forceFresh: false });
-
-    const interval = setInterval(() => {
-      fetchAnalytics({ forceFresh: true, background: true });
-    }, 30000);
-
-    return () => clearInterval(interval);
   }, [fetchAnalytics]);
 
   const normalized = useMemo(() => {
@@ -242,13 +236,6 @@ export default function AnalyticsDashboard() {
             >
               Retry
             </button>
-            <button
-              type="button"
-              className="btn btn-outline-primary rounded-pill px-4"
-              onClick={() => fetchAnalytics({ forceFresh: true })}
-            >
-              Retry Live Sync
-            </button>
           </div>
         </div>
       </div>
@@ -288,13 +275,6 @@ export default function AnalyticsDashboard() {
       </div>
 
       <div className="container position-relative z-1">
-        {syncNotice && (
-          <div className="alert alert-info border-0 shadow-sm rounded-4 mb-4" role="alert">
-            <i className="bi bi-info-circle-fill me-2"></i>
-            {syncNotice}
-          </div>
-        )}
-
         {data?.warning && (
           <div className="alert alert-warning border-0 shadow-sm rounded-4 mb-4" role="alert">
             <i className="bi bi-exclamation-triangle-fill me-2"></i>
@@ -312,24 +292,6 @@ export default function AnalyticsDashboard() {
             <p className="text-muted mb-0">Cycle 9 Faculty Reclassification & Performance Overview</p>
           </div>
           <div className="d-flex flex-column align-items-end gap-2">
-            <button
-              type="button"
-              className="btn btn-outline-primary rounded-pill px-3 py-2 fw-bold"
-              onClick={() => fetchAnalytics({ forceFresh: true, background: true })}
-              disabled={refreshing}
-            >
-              {refreshing ? (
-                <span className="d-flex align-items-center gap-2">
-                  <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                  Syncing...
-                </span>
-              ) : (
-                <>
-                  <i className="bi bi-arrow-clockwise me-2"></i>
-                  Sync from Sheet
-                </>
-              )}
-            </button>
             <div className="text-end">
               <div className="small text-uppercase text-muted fw-bold tracking-wide">Current Cycle</div>
               <div className="h5 mb-0 fw-bold text-primary">2023-2026</div>

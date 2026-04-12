@@ -83,9 +83,12 @@ def faculty_gap_analysis(request):
         data = analyze_faculty_performance(profile.sheet_url, current_rank)
 
         if isinstance(data, dict) and data.get("error"):
-            data = _build_fallback_analytics_payload(
-                current_rank=current_rank,
-                warning=f"Analytics source error: {data.get('error')}",
+            return Response(
+                _build_fallback_analytics_payload(
+                    current_rank=current_rank,
+                    warning=f"Analytics source error: {data.get('error')}",
+                ),
+                status=502 # Use 502 Bad Gateway to trigger frontend fallback logic
             )
 
         cache.set(cache_key, data, CACHE_TTL_MEDIUM)
