@@ -1,6 +1,7 @@
-# backend/api/views.py
+# backend/api/views/analytics_views.py
 
 import hashlib
+import logging
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -8,6 +9,8 @@ from rest_framework.response import Response
 from django.core.cache import cache
 from api.services.analysis_engine import analyze_faculty_performance
 from ..services.cache_service import CACHE_TTL_MEDIUM, gap_analysis_cache_key
+
+logger = logging.getLogger(__name__)
 
 
 def _is_truthy(value):
@@ -96,7 +99,7 @@ def faculty_gap_analysis(request):
         return Response(data)
         
     except Exception as e:
-        print(f"Gap Analysis Error: {e}")
+        logger.error("Gap Analysis Error: %s", e)
         return Response(
             _build_fallback_analytics_payload(
                 warning="Analytics is temporarily unavailable. Please try again in a moment."

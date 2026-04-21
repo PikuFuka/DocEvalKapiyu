@@ -26,7 +26,7 @@ const Navbar = () => {
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [isAuthPage]);
 
   const handleLogout = async () => {
     setLoggingOut(true);

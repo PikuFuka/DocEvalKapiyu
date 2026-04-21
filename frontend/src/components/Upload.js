@@ -5,8 +5,9 @@ import { useNavigate } from 'react-router-dom';
 import { useNotification } from './Notification';
 
 const Upload = () => {
-  const [driveLinks, setDriveLinks] = useState(['']);
-  const [linkPreviews, setLinkPreviews] = useState({}); // Store previews by index
+  const [driveLinks, setDriveLinks] = useState([{ id: 1, value: '' }]);
+  const [nextId, setNextId] = useState(2);
+  const [linkPreviews, setLinkPreviews] = useState({}); // Store previews by link ID
   const [loading, setLoading] = useState(false);
   const [pendingReviewCount, setPendingReviewCount] = useState(0);
   const [checkingQueue, setCheckingQueue] = useState(true);
@@ -32,34 +33,32 @@ const Upload = () => {
   }, []);
   const addLinkField = () => {
     if (driveLinks.length < 5) {
-      setDriveLinks([...driveLinks, '']);
+      setDriveLinks([...driveLinks, { id: nextId, value: '' }]);
+      setNextId(prev => prev + 1);
     } else {
       notify.warning('Maximum of 5 links allowed.');
     }
   };
 
-  const removeLinkField = (index) => {
+  const removeLinkField = (linkId) => {
     if (driveLinks.length > 1) {
-      setDriveLinks(driveLinks.filter((_, i) => i !== index));
-      // Clean up preview
+      setDriveLinks(driveLinks.filter(link => link.id !== linkId));
       const newPreviews = { ...linkPreviews };
-      delete newPreviews[index];
+      delete newPreviews[linkId];
       setLinkPreviews(newPreviews);
     }
   };
 
-  const updateLink = (index, value) => {
-    const newLinks = [...driveLinks];
-    newLinks[index] = value;
-    setDriveLinks(newLinks);
+  const updateLink = (linkId, value) => {
+    setDriveLinks(driveLinks.map(link => link.id === linkId ? { ...link, value } : link));
   };
 
-  const handleBlur = async (index, link) => {
+  const handleBlur = async (linkId, link) => {
     if (!link || link.trim() === '') return;
     
     setLinkPreviews(prev => ({
         ...prev,
-        [index]: { name: 'Checking...', status: 'loading' }
+        [linkId]: { name: 'Checking...', status: 'loading' }
     }));
     
     try {
@@ -80,13 +79,13 @@ const Upload = () => {
       
       setLinkPreviews(prev => ({
         ...prev,
-        [index]: { name: displayName, status: 'success', icon: icon }
+        [linkId]: { name: displayName, status: 'success', icon: icon }
       }));
     } catch (error) {
       const errorMsg = error.response?.data?.error || 'Invalid Link or Access Denied';
       setLinkPreviews(prev => ({
         ...prev,
-        [index]: { name: errorMsg, status: 'error' }
+        [linkId]: { name: errorMsg, status: 'error' }
       }));
     }
   };
@@ -107,7 +106,7 @@ const Upload = () => {
 
     setLoading(true);
 
-    const nonEmptyLinks = driveLinks.filter(link => link.trim() !== '');
+    const nonEmptyLinks = driveLinks.filter(link => link.value.trim() !== '').map(link => link.value.trim());
 
     if (nonEmptyLinks.length === 0) {
       notify.warning('Please enter at least one Google Drive link.');
@@ -133,7 +132,8 @@ const Upload = () => {
       notify.success(
         `Successfully submitted ${nonEmptyLinks.length} document link(s). Please review and confirm all classification results before continuing to dashboard.`
       );
-      setDriveLinks(['']);
+      setDriveLinks([{ id: nextId, value: '' }]);
+      setNextId(prev => prev + 1);
       setLinkPreviews({});
       navigate('/classification-review');
     } catch (error) {
@@ -203,13 +203,13 @@ const Upload = () => {
                 </button>
               </div>
             )}
-            {driveLinks.map((link, index) => (
+            {driveLinks.map((linkObj) => (
               <motion.div
-                key={index}
+                key={linkObj.id}
                 className="mb-3"
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1 * index }}
+                transition={{ delay: 0.05 }}
               >
               <div className="d-flex flex-column flex-md-row align-items-stretch gap-2 upload-link-row">
                 <div className="flex-grow-1 position-relative upload-link-field">
@@ -218,18 +218,18 @@ const Upload = () => {
                                 <i className="bi bi-link-45deg fs-5"></i>
                             </span>
                             
-                            {linkPreviews[index]?.status === 'success' ? (
+                            {linkPreviews[linkObj.id]?.status === 'success' ? (
                       <div className="form-control border-0 bg-light py-3 link-preview-shell">
                         <div className="link-preview-main text-success">
-                          <i className={`bi ${linkPreviews[index].icon || 'bi-check-circle'} link-preview-icon`}></i>
-                          <span className="fw-medium link-preview-name" title={linkPreviews[index].name}>{linkPreviews[index].name}</span>
+                          <i className={`bi ${linkPreviews[linkObj.id].icon || 'bi-check-circle'} link-preview-icon`}></i>
+                          <span className="fw-medium link-preview-name" title={linkPreviews[linkObj.id].name}>{linkPreviews[linkObj.id].name}</span>
                                     </div>
                                     <button 
                                         type="button" 
                           className="btn btn-sm btn-link text-muted p-0 ms-2 link-preview-edit"
                                         onClick={() => {
                                             const newPreviews = { ...linkPreviews };
-                                            delete newPreviews[index];
+                                            delete newPreviews[linkObj.id];
                                             setLinkPreviews(newPreviews);
                                         }}
                                         title="Edit Link"
@@ -241,16 +241,16 @@ const Upload = () => {
                                 <input
                                     type="url"
                                     placeholder="https://drive.google.com/drive/folders/..."
-                                    value={link}
-                                    onChange={(e) => updateLink(index, e.target.value)}
-                                    onBlur={(e) => handleBlur(index, e.target.value)}
-                                  className={`form-control border-0 bg-light py-3 upload-link-input ${linkPreviews[index]?.status === 'error' ? 'is-invalid' : ''} overflow-hidden`}
-                                    required={driveLinks.length === 1 && index === 0}
-                                    disabled={linkPreviews[index]?.status === 'loading' || loading || checkingQueue || pendingReviewCount > 0}
+                                    value={linkObj.value}
+                                    onChange={(e) => updateLink(linkObj.id, e.target.value)}
+                                    onBlur={(e) => handleBlur(linkObj.id, e.target.value)}
+                                  className={`form-control border-0 bg-light py-3 upload-link-input ${linkPreviews[linkObj.id]?.status === 'error' ? 'is-invalid' : ''} overflow-hidden`}
+                                    required={driveLinks.length === 1}
+                                    disabled={linkPreviews[linkObj.id]?.status === 'loading' || loading || checkingQueue || pendingReviewCount > 0}
                                 />
                             )}
 
-                            {linkPreviews[index]?.status === 'loading' && (
+                            {linkPreviews[linkObj.id]?.status === 'loading' && (
                                 <span className="input-group-text border-0 bg-light text-muted px-3">
                                     <span className="spinner-border spinner-border-sm text-primary"></span>
                                 </span>
@@ -258,11 +258,11 @@ const Upload = () => {
                         </div>
                         
                         {/* Error Message Only */}
-                        {linkPreviews[index]?.status === 'error' && (
+                        {linkPreviews[linkObj.id]?.status === 'error' && (
                             <div className="mt-1 ms-2">
                                 <small className="fw-bold text-danger">
                                     <i className="bi bi-exclamation-circle me-1"></i>
-                                    {linkPreviews[index].name}
+                                    {linkPreviews[linkObj.id].name}
                                 </small>
                             </div>
                         )}
@@ -270,7 +270,7 @@ const Upload = () => {
                     {driveLinks.length > 1 && (
                     <button
                         type="button"
-                        onClick={() => removeLinkField(index)}
+                        onClick={() => removeLinkField(linkObj.id)}
                         className="btn btn-light text-danger border rounded-3 px-3 hover-shadow"
                         disabled={loading || checkingQueue || pendingReviewCount > 0}
                     >

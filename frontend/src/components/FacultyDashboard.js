@@ -88,9 +88,12 @@ const FacultyDashboard = () => {
 
     fetchDashboardData();
 
-    // Poll for updates every 5 seconds.
+    // Poll for updates only when there are processing uploads.
     const interval = setInterval(() => {
-      fetchDashboardData(true);
+      const hasActiveUploads = uploads.some(u => u.status === 'processing' || u.status === 'pending');
+      if (hasActiveUploads) {
+        fetchDashboardData(true);
+      }
     }, 5000);
 
     return () => {

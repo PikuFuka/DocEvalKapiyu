@@ -1,6 +1,6 @@
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from django.core.cache import cache
 from django.contrib.auth import get_user_model
@@ -19,10 +19,8 @@ from ..services.cache_service import (
 )
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def admin_dashboard_stats(request):
-    if not request.user.is_staff:
-        return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
 
     cached_payload = cache.get(ADMIN_DASHBOARD_STATS_KEY)
     if cached_payload is not None:
@@ -39,10 +37,8 @@ def admin_dashboard_stats(request):
     return Response(payload)
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def admin_users_list(request):
-    if not request.user.is_staff:
-        return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
 
     cached_payload = cache.get(ADMIN_USERS_LIST_KEY)
     if cached_payload is not None:
@@ -60,10 +56,8 @@ def admin_users_list(request):
     return Response(payload)
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def admin_user_documents(request, user_id):
-    if not request.user.is_staff:
-        return Response({'error': 'Permission denied'}, status=status.HTTP_403_FORBIDDEN)
 
     cache_key = admin_user_documents_cache_key(user_id)
     cached_payload = cache.get(cache_key)

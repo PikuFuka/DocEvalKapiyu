@@ -106,6 +106,9 @@ const Home = () => {
                     style={{ minHeight: '300px', objectFit: 'cover' }} 
                     loading="eager"
                     fetchPriority="high"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                    }}
                   />
                   
                   {/* Floating Elements */}
@@ -214,9 +217,8 @@ const Home = () => {
         </div>
       </footer>
 
-      <style jsx>{`
-        .hover-scale:hover {
-          tme-page {
+      <style>{`
+        .home-page {
           scroll-behavior: smooth;
         }
         .backdrop-blur {
@@ -246,7 +248,8 @@ const Home = () => {
         }
         .hover-lift:hover {
           transform: translateY(-10px);
-          box-shadow: 0 20px 40px rgba(0,0,0,0.08
+          box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+        }
         .hover-primary:hover {
           color: var(--bs-primary) !important;
         }

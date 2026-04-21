@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useNotification } from './Notification';
-
 const Login = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { notify } = useNotification();
@@ -50,6 +49,11 @@ const Login = () => {
 
     setLoading(false);
   };
+
+  // Redirect authenticated users to their dashboard
+  if (isAuthenticated) {
+    return <Navigate to={user?.is_staff ? '/admin-dashboard' : '/faculty-dashboard'} replace />;
+  }
 
   return (
     <div className="login-split-container">

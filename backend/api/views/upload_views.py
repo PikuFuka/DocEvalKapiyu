@@ -1,8 +1,12 @@
+import logging
+
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.core.cache import cache
+
+logger = logging.getLogger(__name__)
 
 from ..models import DocumentUpload
 from ..serializers import (
@@ -77,7 +81,7 @@ class DocumentUploadView(generics.ListCreateAPIView):
 
         # Duplicate check before accepting batch
         for link in links:
-            if DocumentUpload.objects.filter(user=request.user, google_drive_link__iexact=link).exists():
+            if DocumentUpload.objects.filter(user=request.user, google_drive_link__exact=link).exists():
                 return Response(
                     {'error': f'Duplicate document detected: The link has already been uploaded.'},
                     status=status.HTTP_400_BAD_REQUEST
@@ -102,7 +106,7 @@ class DocumentUploadView(generics.ListCreateAPIView):
             try:
                 process_document_upload(upload, classification_only=True)
             except Exception as e:
-                print(f"Error processing upload {upload.id}: {e}")
+                logger.error("Error processing upload %s: %s", upload.id, e)
             finally:
                 upload.refresh_from_db()
 
@@ -129,7 +133,7 @@ def peek_drive_link(request):
     except ValueError as e:
         return Response({'error': str(e)}, status=400)
     except Exception as e:
-        print(f"Peek error: {e}")
+        logger.error("Peek error: %s", e)
         return Response({'error': 'Could not access link. Check permissions.'}, status=400)
 
 
@@ -140,7 +144,7 @@ def user_uploads_list(request):
     try:
         cached_payload = cache.get(cache_key)
     except Exception as cache_error:
-        print(f"Cache read failed for user uploads ({request.user.id}): {cache_error}")
+        logger.warning("Cache read failed for user uploads (%s): %s", request.user.id, cache_error)
         cached_payload = None
 
     if cached_payload is not None:
@@ -153,7 +157,7 @@ def user_uploads_list(request):
     try:
         cache.set(cache_key, payload, CACHE_TTL_SHORT)
     except Exception as cache_error:
-        print(f"Cache write failed for user uploads ({request.user.id}): {cache_error}")
+        logger.warning("Cache write failed for user uploads (%s): %s", request.user.id, cache_error)
 
     return Response(payload)
 

@@ -1,10 +1,12 @@
 import React, { useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import "aos/dist/aos.css";
 import AOS from "aos";
 
 const About = () => {
+  const navigate = useNavigate();
+
   useEffect(() => {
     AOS.init({
       duration: 1000,
@@ -22,7 +24,7 @@ const About = () => {
       }}
     >
       {/* GLOBAL STYLES & ANIMATIONS */}
-      <style jsx>{`
+      <style>{`
         .backdrop-blur {
           backdrop-filter: blur(10px);
           -webkit-backdrop-filter: blur(10px);
@@ -241,8 +243,8 @@ const About = () => {
                   <span className="text-gradient">Academic Excellence</span>
                 </h1>
                 <div className="d-flex gap-3 justify-content-center justify-content-lg-start">
-                  <button className="btn btn-primary btn-lg rounded-pill px-4 shadow-sm">Get Started</button>
-                  <button className="btn btn-outline-secondary btn-lg rounded-pill px-4">Learn More</button>
+                  <button className="btn btn-primary btn-lg rounded-pill px-4 shadow-sm" onClick={() => navigate('/faculty-register')}>Get Started</button>
+                  <a href="#nbc-section" className="btn btn-outline-secondary btn-lg rounded-pill px-4">Learn More</a>
                 </div>
               </motion.div>
             </div>

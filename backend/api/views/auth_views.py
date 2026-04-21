@@ -1,3 +1,5 @@
+import logging
+
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -7,6 +9,8 @@ from api.models import User
 from django.db import transaction
 from django.utils import timezone
 from rest_framework.permissions import AllowAny
+
+logger = logging.getLogger(__name__)
 
 from ..models import FacultyProfile
 from ..serializers import (
@@ -23,6 +27,7 @@ class FacultyRegistrationView(generics.CreateAPIView):
     serializer_class = FacultyRegistrationSerializer
     permission_classes = [AllowAny]
 
+    @transaction.atomic
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -43,21 +48,25 @@ class FacultyRegistrationView(generics.CreateAPIView):
         }
 
         # Create Google Sheet for the user using the provided script
-        user_sheet_url = create_user_google_sheet({
-            'first_name': request.data.get('first_name', ''),
-            'middle_name': request.data.get('middle_name', ''),
-            'last_name': request.data.get('last_name', ''),
-            'degree_name': request.data.get('degree_name', ''),
-            'hei_name': request.data.get('hei_name', ''),
-            'year_graduated': request.data.get('year_graduated', ''),
-            'faculty_rank': request.data.get('faculty_rank', ''),
-            'mode_of_appointment': request.data.get('mode_of_appointment', 'NBC 461'),
-            'date_of_appointment': str(request.data.get('date_of_appointment', '')),
-            'suc_name': request.data.get('suc_name', ''),
-            'campus': request.data.get('campus', ''),
-            'address': request.data.get('address', ''),
-            'email': request.data.get('email', ''),
-        })
+        try:
+            user_sheet_url = create_user_google_sheet({
+                'first_name': request.data.get('first_name', ''),
+                'middle_name': request.data.get('middle_name', ''),
+                'last_name': request.data.get('last_name', ''),
+                'degree_name': request.data.get('degree_name', ''),
+                'hei_name': request.data.get('hei_name', ''),
+                'year_graduated': request.data.get('year_graduated', ''),
+                'faculty_rank': request.data.get('faculty_rank', ''),
+                'mode_of_appointment': request.data.get('mode_of_appointment', 'NBC 461'),
+                'date_of_appointment': str(request.data.get('date_of_appointment', '')),
+                'suc_name': request.data.get('suc_name', ''),
+                'campus': request.data.get('campus', ''),
+                'address': request.data.get('address', ''),
+                'email': request.data.get('email', ''),
+            })
+        except Exception as e:
+            logger.warning("Google Sheet creation failed for user %s: %s", user.email, e)
+            user_sheet_url = None
 
         profile_data['sheet_url'] = user_sheet_url
         FacultyProfile.objects.create(**profile_data)
@@ -69,7 +78,10 @@ class FacultyRegistrationView(generics.CreateAPIView):
         user.save()
 
         # Send verification email
-        send_verification_email(user.email, verification_token)
+        try:
+            send_verification_email(user.email, verification_token)
+        except Exception as e:
+            logger.error("Failed to send verification email to %s: %s", user.email, e)
 
         headers = self.get_success_headers(serializer.data)
         return Response({
@@ -88,11 +100,10 @@ def verify_email(request):
     try:
         user = User.objects.get(verification_token=token)
     except User.DoesNotExist:
-        # Check if user is already verified
-        already_verified = User.objects.filter(email_verified=True, verification_token__isnull=True).exists()
-        if already_verified:
-            return Response({'message': 'Email already verified!'}, status=status.HTTP_200_OK)
-        return Response({'error': 'Invalid verification token'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {'error': 'Invalid or expired verification token.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
     user.email_verified = True
     user.verification_token = None
@@ -107,7 +118,7 @@ def login_view(request):
     password = request.data.get('password')
 
     user = authenticate(request, email=email, password=password)
-    print("Authenticated user:", user)
+    logger.debug("Authentication attempt for %s: %s", email, 'success' if user else 'failed')
 
     if user:
         if not user.email_verified:
