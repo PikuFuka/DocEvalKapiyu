@@ -1095,7 +1095,7 @@ def _merge_classification_result(base_result, classification_override=None):
     return merged
 
 
-def process_document_upload(upload, classification_only=False, classification_override=None):
+def process_document_upload(upload, classification_only=False, classification_override=None, evidence_type_override=None):
     start_time = time.time()
     try:
         file_info_list = extract_text_from_drive(upload.google_drive_link)
@@ -1183,7 +1183,7 @@ def process_document_upload(upload, classification_only=False, classification_ov
             if learned_feedback:
                 print(f"Applied learned correction from feedback {learned_feedback.id}.")
 
-        evidence_type = map_classification_to_evidence_type(classification_result)
+        evidence_type = evidence_type_override or map_classification_to_evidence_type(classification_result)
         print(f"Determined Evidence Type: {evidence_type}")
 
         if classification_only:
@@ -1482,6 +1482,8 @@ def process_document_upload(upload, classification_only=False, classification_ov
 
                         elif evidence_type in ["kra2a_citation_local", "kra2a_citation_international"] and extracted_data:
                             print(f"-> Sending KRA 2A Citation to Sheets ({len(extracted_data)} items)...")
+
+                            citation_scope = "international" if evidence_type.endswith("_international") else "local"
                             
                             for item in extracted_data:
                                 raw = item.get("extracted_raw", {})
@@ -1503,7 +1505,7 @@ def process_document_upload(upload, classification_only=False, classification_ov
 
                                 send_citation_to_sheet(
                                     spreadsheet_id=spreadsheet_id,
-                                    scope=raw.get("scope", "local"),
+                                    scope=citation_scope,
                                     title=raw.get("title", "Untitled"),
                                     date_published=date_clean,
                                     journal=raw.get("journal", ""),

@@ -186,7 +186,7 @@ const Home = () => {
       </section>
 
       {/* Footer - Centered & Polished */}
-      <footer className="py-5 mt-5">
+      <footer className="py-5">
         <div className="container">
           <div className="row gy-4 justify-content-center text-center">
             <div className="col-lg-8">

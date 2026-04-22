@@ -1,9 +1,64 @@
 .faculty-dashboard-v2 {
+  position: relative;
+  isolation: isolate;
   color: #0f1f38;
+  background:
+    radial-gradient(circle at 10% 12%, rgba(13, 110, 253, 0.14) 0%, transparent 28%),
+    radial-gradient(circle at 90% 14%, rgba(25, 135, 84, 0.12) 0%, transparent 26%),
+    radial-gradient(circle at 56% 92%, rgba(245, 158, 11, 0.08) 0%, transparent 32%),
+    linear-gradient(145deg, #eef5ff 0%, #fcfeff 45%, #eefaf4 100%);
+}
+
+.faculty-dashboard-v2::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(18, 45, 84, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(18, 45, 84, 0.03) 1px, transparent 1px);
+  background-size: 36px 36px;
+  opacity: 0.55;
+  z-index: 0;
+}
+
+.faculty-dashboard-v2::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at top center, rgba(255, 255, 255, 0.5) 0%, transparent 62%);
+  z-index: 0;
 }
 
 .dashboard-shell-v2 {
   max-width: 1220px;
+}
+
+.faculty-dashboard-v2 .upload-surface-bg {
+  opacity: 0.95;
+}
+
+.faculty-dashboard-v2 .upload-surface-blob-primary {
+  top: -8%;
+  right: -8%;
+  opacity: 0.2;
+}
+
+.faculty-dashboard-v2 .upload-surface-blob-success {
+  bottom: -15%;
+  left: -10%;
+  opacity: 0.18;
+}
+
+.upload-surface-blob-accent {
+  width: 420px;
+  height: 420px;
+  top: 22%;
+  left: 34%;
+  background: #f59e0b;
+  opacity: 0.1;
+  filter: blur(72px);
 }
 
 .dashboard-topbar-v2 {
@@ -474,6 +529,13 @@
 @media (max-width: 767.98px) {
   .dashboard-title-v2 {
     font-size: 1.9rem;
+  }
+
+  .upload-surface-blob-accent {
+    width: 280px;
+    height: 280px;
+    top: 18%;
+    left: 24%;
   }
 
   .dashboard-live-pill {

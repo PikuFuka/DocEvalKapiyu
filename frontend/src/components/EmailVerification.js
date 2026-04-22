@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'framer-motion';
@@ -12,6 +12,7 @@ const EmailVerification = () => {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const { verifyEmail } = useAuth();
+  const handledTokenRef = useRef('');
 
   const token = useMemo(() => {
     const queryToken = new URLSearchParams(location.search).get('token');
@@ -19,17 +20,18 @@ const EmailVerification = () => {
   }, [routeToken, location.search]);
 
   useEffect(() => {
-    let isVerified = false;
-
     const verify = async () => {
-      if (isVerified) return;
-      isVerified = true;
-
       if (!token) {
         setError('Invalid verification link.');
         setLoading(false);
         return;
       }
+
+      if (handledTokenRef.current === token) {
+        return;
+      }
+
+      handledTokenRef.current = token;
 
       try {
         const result = await verifyEmail(token);
@@ -38,6 +40,7 @@ const EmailVerification = () => {
           // Redirect to login after 3 seconds
           setTimeout(() => {
             navigate('/login', { 
+              replace: true,
               state: { 
                 message: 'Email verified successfully! You can now log in.',
                 type: 'success' 

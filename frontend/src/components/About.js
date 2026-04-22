@@ -300,9 +300,9 @@ const About = () => {
             <div className="creator-showcase-wrap">
               <div className="row g-4 justify-content-center">
                 {[
-                  { name: 'Jethro Marquez', role: 'Student', img: '/images/Image 1.png' },
-                  { name: 'Gabriel Scott Santos', role: 'Student', img: '/images/Image 2.png' },
-                  { name: 'Rolan Sotomayor', role: 'Student', img: '/images/Image 3.png' },
+                  { name: 'Rolan Sotomayor', role: 'AI Developer', img: '/images/Image 3.png' },
+                  { name: 'Jethro Marquez', role: 'Data Analyst', img: '/images/Image 1.png' },
+                  { name: 'Gabriel Scott Santos', role: 'Data Analyst', img: '/images/Image 2.png' },
                 ].map((member, i) => (
                   <div className="col-md-6 col-lg-4" key={i} data-aos="fade-up" data-aos-delay={i * 120}>
                     <div className="creator-modern-card text-center">

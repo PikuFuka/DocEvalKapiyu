@@ -214,7 +214,9 @@ def confirm_upload_classification(request, upload_id):
         'sub_criterion': classification_override['sub_criteria'],
     }
 
-    if not map_classification_to_evidence_type(candidate):
+    confirmed_evidence_type = map_classification_to_evidence_type(candidate)
+
+    if not confirmed_evidence_type:
         return Response(
             {'error': 'Invalid classification combination. Please choose a valid KRA/Criterion/Sub-Subcriterion.'},
             status=status.HTTP_400_BAD_REQUEST
@@ -237,6 +239,7 @@ def confirm_upload_classification(request, upload_id):
         upload,
         classification_only=False,
         classification_override=classification_override,
+        evidence_type_override=confirmed_evidence_type,
     )
     upload.refresh_from_db()
     invalidate_upload_related_cache(upload.user_id)

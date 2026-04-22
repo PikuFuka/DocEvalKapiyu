@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -13,19 +13,33 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { notify } = useNotification();
+  const handledRedirectSignatureRef = useRef('');
+
+  const redirectMessage = location.state?.message;
+  const redirectType = location.state?.type;
 
   // Check for redirect message from email verification
   useEffect(() => {
-    if (location.state?.message) {
-      if (location.state.type === 'success') {
-        notify.success(location.state.message);
-      } else {
-        notify.info(location.state.message);
-      }
-      // Clear the state
-      window.history.replaceState({}, document.title);
+    if (!redirectMessage) {
+      return;
     }
-  }, [location.state, notify]);
+
+    const redirectSignature = `${redirectType || 'info'}::${redirectMessage}`;
+
+    if (handledRedirectSignatureRef.current === redirectSignature) {
+      return;
+    }
+
+    handledRedirectSignatureRef.current = redirectSignature;
+
+    if (redirectType === 'success') {
+      notify.success(redirectMessage);
+    } else {
+      notify.info(redirectMessage);
+    }
+
+    navigate(location.pathname, { replace: true, state: null });
+  }, [redirectMessage, redirectType, location.pathname, navigate, notify]);
 
   const handleChange = (e) => {
     setFormData({

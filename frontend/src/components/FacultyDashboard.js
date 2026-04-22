@@ -154,6 +154,7 @@ const FacultyDashboard = () => {
       <div className="upload-surface-bg" aria-hidden="true">
         <span className="upload-surface-blob upload-surface-blob-primary"></span>
         <span className="upload-surface-blob upload-surface-blob-success"></span>
+        <span className="upload-surface-blob upload-surface-blob-accent"></span>
       </div>
 
       <div className="container position-relative z-1 dashboard-shell-v2">

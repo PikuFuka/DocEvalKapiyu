@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import api from '../services/api';
 
 const AuthContext = createContext();
@@ -16,16 +16,7 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true); // For initial check
 
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      checkAuthStatus(token);
-    } else {
-      setLoading(false);
-    }
-  }, []);
-
-  const checkAuthStatus = async (token) => {
+  const checkAuthStatus = useCallback(async () => {
     try {
       const response = await api.get('/auth/profile/');
       setUser(response.data);
@@ -38,9 +29,18 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const login = async (email, password) => {
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      checkAuthStatus();
+    } else {
+      setLoading(false);
+    }
+  }, [checkAuthStatus]);
+
+  const login = useCallback(async (email, password) => {
     try {
       const response = await api.post('/auth/login/', { email, password });
       const { token, user_id, email: userEmail, first_name, last_name, is_staff, email_verified } = response.data;
@@ -63,15 +63,15 @@ export const AuthProvider = ({ children }) => {
         error: error.response?.data?.error || 'Login failed'
       };
     }
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem('token');
     setUser(null);
     setIsAuthenticated(false);
-  };
+  }, []);
 
-  const registerFaculty = async (formData) => {
+  const registerFaculty = useCallback(async (formData) => {
     try {
       const response = await api.post('/auth/faculty-register/', formData);
       const { message } = response.data;
@@ -86,9 +86,9 @@ export const AuthProvider = ({ children }) => {
         error: error.response?.data?.error || 'Registration failed'
       };
     }
-  };
+  }, []);
 
-  const verifyEmail = async (token) => {
+  const verifyEmail = useCallback(async (token) => {
     try {
       await api.post('/auth/verify-email/', { token });
       // Optionally, update the user state if they are logged in
@@ -100,9 +100,9 @@ export const AuthProvider = ({ children }) => {
         error: error.response?.data?.error || 'Verification failed'
       };
     }
-  };
+  }, []);
 
-  const value = {
+  const value = useMemo(() => ({
     user,
     isAuthenticated,
     loading, // Expose loading state
@@ -110,7 +110,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     registerFaculty,
     verifyEmail
-  };
+  }), [user, isAuthenticated, loading, login, logout, registerFaculty, verifyEmail]);
 
   return (
     <AuthContext.Provider value={value}>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, createContext, useContext, useCallback } from 'react';
+import React, { useState, createContext, useContext, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const NotificationContext = createContext();
@@ -30,15 +30,20 @@ export const NotificationProvider = ({ children }) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
   }, []);
 
-  const notify = {
+  const notify = useMemo(() => ({
     success: (msg, duration) => addNotification(msg, 'success', duration),
     error: (msg, duration) => addNotification(msg, 'error', duration),
     warning: (msg, duration) => addNotification(msg, 'warning', duration),
     info: (msg, duration) => addNotification(msg, 'info', duration),
-  };
+  }), [addNotification]);
+
+  const value = useMemo(() => ({
+    notify,
+    removeNotification,
+  }), [notify, removeNotification]);
 
   return (
-    <NotificationContext.Provider value={{ notify, removeNotification }}>
+    <NotificationContext.Provider value={value}>
       {children}
       <NotificationContainer notifications={notifications} onClose={removeNotification} />
     </NotificationContext.Provider>
