@@ -13,17 +13,18 @@ from ..serializers import (
     DocumentUploadSerializer,
     DocumentUploadListSerializer,
 )
-from ..services.document_processing_service import (
-    process_document_upload,
-    get_drive_file_name,
-    map_classification_to_evidence_type,
-)
 from ..services.feedback_learning_service import record_classification_feedback
 from ..services.cache_service import (
     CACHE_TTL_SHORT,
     invalidate_upload_related_cache,
     user_uploads_cache_key,
 )
+
+
+def _document_processing_service():
+    from ..services import document_processing_service
+
+    return document_processing_service
 
 class DocumentUploadView(generics.ListCreateAPIView):
     serializer_class = DocumentUploadSerializer
@@ -104,7 +105,7 @@ class DocumentUploadView(generics.ListCreateAPIView):
 
         for upload in uploads:
             try:
-                process_document_upload(upload, classification_only=True)
+                _document_processing_service().process_document_upload(upload, classification_only=True)
             except Exception as e:
                 logger.error("Error processing upload %s: %s", upload.id, e)
             finally:
@@ -128,7 +129,7 @@ def peek_drive_link(request):
         return Response({'error': 'No link provided'}, status=400)
     
     try:
-        metadata = get_drive_file_name(link)
+        metadata = _document_processing_service().get_drive_file_name(link)
         return Response(metadata)
     except ValueError as e:
         return Response({'error': str(e)}, status=400)
@@ -214,7 +215,7 @@ def confirm_upload_classification(request, upload_id):
         'sub_criterion': classification_override['sub_criteria'],
     }
 
-    confirmed_evidence_type = map_classification_to_evidence_type(candidate)
+    confirmed_evidence_type = _document_processing_service().map_classification_to_evidence_type(candidate)
 
     if not confirmed_evidence_type:
         return Response(
@@ -235,7 +236,7 @@ def confirm_upload_classification(request, upload_id):
     upload.save(update_fields=['status', 'error_message'])
     invalidate_upload_related_cache(upload.user_id)
 
-    success = process_document_upload(
+    success = _document_processing_service().process_document_upload(
         upload,
         classification_only=False,
         classification_override=classification_override,

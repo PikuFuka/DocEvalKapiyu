@@ -1,4 +1,5 @@
 import logging
+import time
 
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
@@ -156,3 +157,41 @@ class FacultyProfileView(generics.RetrieveUpdateAPIView):
     def perform_update(self, serializer):
         serializer.save()
         invalidate_admin_cache()
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def warmup_inference_services(request):
+    started_at = time.perf_counter()
+    ml_ready = False
+    ocr_ready = False
+    errors = []
+
+    try:
+        from ..services.ml_processing_service import warmup_ml_model
+
+        ml_ready = bool(warmup_ml_model())
+    except Exception as exc:
+        logger.warning("ML warmup failed for user %s: %s", request.user.id, exc)
+        errors.append('ml')
+
+    try:
+        from ..services.document_processing_service import warmup_ocr_model
+
+        ocr_ready = bool(warmup_ocr_model())
+    except Exception as exc:
+        logger.warning("OCR warmup failed for user %s: %s", request.user.id, exc)
+        errors.append('ocr')
+
+    duration_ms = int((time.perf_counter() - started_at) * 1000)
+
+    return Response(
+        {
+            'all_ready': ml_ready and ocr_ready,
+            'ml_ready': ml_ready,
+            'ocr_ready': ocr_ready,
+            'duration_ms': duration_ms,
+            'errors': errors,
+        },
+        status=status.HTTP_200_OK,
+    )

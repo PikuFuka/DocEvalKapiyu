@@ -4,6 +4,7 @@ import io
 import logging
 import re
 import time
+import threading
 from datetime import datetime
 from PIL import Image, ImageFilter, ImageOps
 from django.conf import settings
@@ -41,23 +42,52 @@ from .feedback_learning_service import (
     build_content_hash,
 )
 
-# --- DocTR & Conversion Imports ---
-try:
-    from docx2pdf import convert as docx_convert
-    from doctr.io import DocumentFile
-    from doctr.models import ocr_predictor
-    
-    print("Initializing DocTR Model (this may take a moment)...")
-    # Preload the model (using PyTorch backend by default if installed)
-    DOCTR_MODEL = ocr_predictor(pretrained=True)
-    print("DocTR Model Initialized.")
-except ImportError:
-    print("CRITICAL: DocTR or docx2pdf not installed. Please run: pip install python-doctr[torch] docx2pdf")
-    DOCTR_MODEL = None
-except Exception as e:
-    print(f"Error initializing DocTR: {e}")
-    DOCTR_MODEL = None
+# --- DocTR lazy loading state ---
+docx_convert = None
+DocumentFile = None
+DOCTR_MODEL = None
+_DOCTR_AVAILABLE = None
+_DOCTR_LOCK = threading.Lock()
+
+
+def _ensure_doctr_loaded():
+    global docx_convert, DocumentFile, DOCTR_MODEL, _DOCTR_AVAILABLE
+
+    if _DOCTR_AVAILABLE is True and DOCTR_MODEL is not None and DocumentFile is not None and docx_convert is not None:
+        return True
+
+    if _DOCTR_AVAILABLE is False:
+        return False
+
+    with _DOCTR_LOCK:
+        if _DOCTR_AVAILABLE is True and DOCTR_MODEL is not None and DocumentFile is not None and docx_convert is not None:
+            return True
+
+        try:
+            from docx2pdf import convert as _docx_convert
+            from doctr.io import DocumentFile as _DocumentFile
+            from doctr.models import ocr_predictor
+
+            print("Initializing DocTR Model (lazy load, this may take a moment)...")
+            docx_convert = _docx_convert
+            DocumentFile = _DocumentFile
+            DOCTR_MODEL = ocr_predictor(pretrained=True)
+            _DOCTR_AVAILABLE = True
+            print("DocTR Model Initialized.")
+            return True
+        except ImportError:
+            print("CRITICAL: DocTR or docx2pdf not installed. Please run: pip install python-doctr[torch] docx2pdf")
+        except Exception as e:
+            print(f"Error initializing DocTR: {e}")
+
+        _DOCTR_AVAILABLE = False
+        DOCTR_MODEL = None
+        return False
 # ----------------------------------
+
+
+def warmup_ocr_model():
+    return _ensure_doctr_loaded() and DOCTR_MODEL is not None
 
 logger = logging.getLogger(__name__)
 
@@ -300,7 +330,7 @@ def extract_text_with_doctr(file_path, mime_type):
     Unified text extraction using DocTR (Deep Learning OCR).
     Handles Images, PDFs, and Word Docs (via conversion).
     """
-    if not DOCTR_MODEL:
+    if not _ensure_doctr_loaded() or not DOCTR_MODEL:
         print("DocTR model not available. Returning empty.")
         return "", 0
 

@@ -4,7 +4,8 @@ from .auth_views import (
     verify_email,
     login_view,
     user_profile_view,
-    FacultyProfileView
+    FacultyProfileView,
+    warmup_inference_services,
 )
 from .upload_views import (
     DocumentUploadView,
@@ -29,6 +30,7 @@ __all__ = [
     'login_view',
     'user_profile_view',
     'FacultyProfileView',
+    'warmup_inference_services',
     'DocumentUploadView',
     'user_uploads_list',
     'peek_drive_link',

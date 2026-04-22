@@ -6,6 +6,7 @@ urlpatterns = [
     path('auth/faculty-register/', views.FacultyRegistrationView.as_view(), name='faculty-register'),
     path('auth/verify-email/', views.verify_email, name='verify-email'),
     path('auth/login/', views.login_view, name='login'),
+    path('auth/warmup/', views.warmup_inference_services, name='warmup-inference-services'),
     path('auth/profile/', views.user_profile_view, name='user-profile'),
     path('faculty/profile/', views.FacultyProfileView.as_view(), name='faculty-profile'),
     path('analytics/gap-analysis/', views.faculty_gap_analysis, name='gap-analysis'),

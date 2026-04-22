@@ -16,6 +16,11 @@ set "FRONTEND_URL=http://127.0.0.1:3000/"
 set "STARTED_ANY=0"
 set "BROWSER=none"
 set "BROWSER_ARGS="
+set "REFRESH_SHORTCUT=0"
+
+if /I "%~1"=="--refresh-shortcut" set "REFRESH_SHORTCUT=1"
+if not exist "%SHORTCUT_PATH%" set "REFRESH_SHORTCUT=1"
+if not exist "%ICON_TARGET%" set "REFRESH_SHORTCUT=1"
 
 if not exist "%BACKEND_DIR%\manage.py" (
   echo [ERROR] Could not find backend\manage.py
@@ -33,43 +38,47 @@ if not exist "%PYTHON_EXE%" (
   set "PYTHON_EXE=python"
 )
 
-echo Preparing shortcut icon from image.png...
-if exist "%ICON_SOURCE%" (
+if "%REFRESH_SHORTCUT%"=="1" (
+  echo Preparing shortcut icon from image.png...
+  if exist "%ICON_SOURCE%" (
+    powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+      "$pngPath = $env:ICON_SOURCE; $icoPath = $env:ICON_TARGET; " ^
+      "$pngBytes = [System.IO.File]::ReadAllBytes($pngPath); " ^
+      "$ms = New-Object System.IO.MemoryStream; $bw = New-Object System.IO.BinaryWriter($ms); " ^
+      "$bw.Write([UInt16]0); $bw.Write([UInt16]1); $bw.Write([UInt16]1); " ^
+      "$bw.Write([Byte]0); $bw.Write([Byte]0); $bw.Write([Byte]0); $bw.Write([Byte]0); " ^
+      "$bw.Write([UInt16]1); $bw.Write([UInt16]32); " ^
+      "$bw.Write([UInt32]$pngBytes.Length); $bw.Write([UInt32]22); " ^
+      "$bw.Write($pngBytes); " ^
+      "[System.IO.File]::WriteAllBytes($icoPath, $ms.ToArray()); " ^
+      "$bw.Dispose(); $ms.Dispose();"
+  ) else (
+    echo [WARN] Icon source not found: %ICON_SOURCE%
+  )
+
+  echo Ensuring desktop shortcut is available...
   powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-    "$pngPath = $env:ICON_SOURCE; $icoPath = $env:ICON_TARGET; " ^
-    "$pngBytes = [System.IO.File]::ReadAllBytes($pngPath); " ^
-    "$ms = New-Object System.IO.MemoryStream; $bw = New-Object System.IO.BinaryWriter($ms); " ^
-    "$bw.Write([UInt16]0); $bw.Write([UInt16]1); $bw.Write([UInt16]1); " ^
-    "$bw.Write([Byte]0); $bw.Write([Byte]0); $bw.Write([Byte]0); $bw.Write([Byte]0); " ^
-    "$bw.Write([UInt16]1); $bw.Write([UInt16]32); " ^
-    "$bw.Write([UInt32]$pngBytes.Length); $bw.Write([UInt32]22); " ^
-    "$bw.Write($pngBytes); " ^
-    "[System.IO.File]::WriteAllBytes($icoPath, $ms.ToArray()); " ^
-    "$bw.Dispose(); $ms.Dispose();"
-) else (
-  echo [WARN] Icon source not found: %ICON_SOURCE%
-)
+    "$shell = New-Object -ComObject WScript.Shell; " ^
+    "$shortcut = $shell.CreateShortcut($env:SHORTCUT_PATH); " ^
+    "$shortcut.TargetPath = $env:START_BAT; " ^
+    "$shortcut.WorkingDirectory = $env:PROJECT_ROOT; " ^
+    "$shortcut.Description = 'Start THESIS_2026 backend and frontend, then open website'; " ^
+    "if (Test-Path $env:ICON_TARGET) { $shortcut.IconLocation = $env:ICON_TARGET + ',0' } else { $shortcut.IconLocation = $env:SystemRoot + '\System32\shell32.dll,220' }; " ^
+    "$shortcut.Save();"
 
-echo Ensuring desktop shortcut is available...
-powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-  "$shell = New-Object -ComObject WScript.Shell; " ^
-  "$shortcut = $shell.CreateShortcut($env:SHORTCUT_PATH); " ^
-  "$shortcut.TargetPath = $env:START_BAT; " ^
-  "$shortcut.WorkingDirectory = $env:PROJECT_ROOT; " ^
-  "$shortcut.Description = 'Start THESIS_2026 backend and frontend, then open website'; " ^
-  "if (Test-Path $env:ICON_TARGET) { $shortcut.IconLocation = $env:ICON_TARGET + ',0' } else { $shortcut.IconLocation = $env:SystemRoot + '\System32\shell32.dll,220' }; " ^
-  "$shortcut.Save();"
-
-if errorlevel 1 (
-  echo [WARN] Could not create/update desktop shortcut: %SHORTCUT_PATH%
+  if errorlevel 1 (
+    echo [WARN] Could not create/update desktop shortcut: %SHORTCUT_PATH%
+  ) else (
+    echo Desktop shortcut ready: %SHORTCUT_PATH%
+  )
 ) else (
-  echo Desktop shortcut ready: %SHORTCUT_PATH%
+  echo Shortcut already exists. Skipping shortcut refresh.
 )
 
 call :is_url_ready "%BACKEND_URL%"
 if errorlevel 1 (
   echo Starting backend server in this terminal...
-  start "THESIS_2026 Backend" /B "%PYTHON_EXE%" "%BACKEND_DIR%\manage.py" runserver 127.0.0.1:8000
+  start "THESIS_2026 Backend" /B "%PYTHON_EXE%" "%BACKEND_DIR%\manage.py" runserver 127.0.0.1:8000 --skip-checks
   set "STARTED_ANY=1"
 ) else (
   echo Backend is already reachable on port 8000.
@@ -78,7 +87,7 @@ if errorlevel 1 (
 call :is_url_ready "%FRONTEND_URL%"
 if errorlevel 1 (
   echo Starting frontend server in this terminal...
-  start "THESIS_2026 Frontend" /B cmd /v:off /c "cd /d ""%FRONTEND_DIR%"" && npm start"
+  start "THESIS_2026 Frontend" /B cmd /v:off /c "cd /d ""%FRONTEND_DIR%"" && npm run start:fast"
   set "STARTED_ANY=1"
 ) else (
   echo Frontend is already reachable on port 3000.

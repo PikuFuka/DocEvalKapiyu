@@ -1,4 +1,5 @@
 import os
+import threading
 import torch
 import torch.nn as nn
 import joblib
@@ -147,11 +148,32 @@ def load_model_and_encoders():
         return None, None, None, None, None, None
 
 
-MODEL, TOKENIZER, KRA_ENCODER, CRIT_ENCODER, SUB_ENCODER, DEVICE = load_model_and_encoders()
+MODEL, TOKENIZER, KRA_ENCODER, CRIT_ENCODER, SUB_ENCODER, DEVICE = (None, None, None, None, None, None)
+_MODEL_LOCK = threading.Lock()
+
+
+def _get_model_components():
+    global MODEL, TOKENIZER, KRA_ENCODER, CRIT_ENCODER, SUB_ENCODER, DEVICE
+
+    if all([MODEL, TOKENIZER, KRA_ENCODER, CRIT_ENCODER, SUB_ENCODER, DEVICE]):
+        return MODEL, TOKENIZER, KRA_ENCODER, CRIT_ENCODER, SUB_ENCODER, DEVICE
+
+    with _MODEL_LOCK:
+        if not all([MODEL, TOKENIZER, KRA_ENCODER, CRIT_ENCODER, SUB_ENCODER, DEVICE]):
+            MODEL, TOKENIZER, KRA_ENCODER, CRIT_ENCODER, SUB_ENCODER, DEVICE = load_model_and_encoders()
+
+    return MODEL, TOKENIZER, KRA_ENCODER, CRIT_ENCODER, SUB_ENCODER, DEVICE
+
+
+def warmup_ml_model():
+    model, tokenizer, kra_encoder, crit_encoder, sub_encoder, device = _get_model_components()
+    return all([model, tokenizer, kra_encoder, crit_encoder, sub_encoder, device])
 
 
 def classify_document(text):
-    if not MODEL or not TOKENIZER or not KRA_ENCODER or not CRIT_ENCODER or not SUB_ENCODER:
+    model, tokenizer, kra_encoder, crit_encoder, sub_encoder, device = _get_model_components()
+
+    if not model or not tokenizer or not kra_encoder or not crit_encoder or not sub_encoder or not device:
         print("Model components not available.")
         return {"primary_kra": "Unknown", "confidence": 0, "criterion": "N/A", "sub_criterion": "N/A"}
 
@@ -160,10 +182,10 @@ def classify_document(text):
         if not normalized_text:
             return {"primary_kra": "Unknown", "confidence": 0, "criterion": "N/A", "sub_criterion": "N/A"}
 
-        max_length = _effective_max_length(TOKENIZER)
+        max_length = _effective_max_length(tokenizer)
         stride = min(DEFAULT_STRIDE, max(1, max_length // 2))
         input_ids, attention_mask, weights = _encode_with_overflow(
-            TOKENIZER,
+            tokenizer,
             normalized_text,
             max_length=max_length,
             stride=stride,
@@ -171,8 +193,8 @@ def classify_document(text):
 
         with torch.inference_mode():
             kra_logits, crit_logits, sub_logits = _run_chunked_inference(
-                MODEL,
-                DEVICE,
+                model,
+                device,
                 input_ids,
                 attention_mask,
                 weights,
@@ -191,9 +213,9 @@ def classify_document(text):
             _ = float(crit_probs[0][crit_pred_idx].item()) * 100
             _ = float(sub_probs[0][sub_pred_idx].item()) * 100
 
-        kra_label = KRA_ENCODER.inverse_transform([kra_pred_idx])[0]
-        crit_label = CRIT_ENCODER.inverse_transform([crit_pred_idx])[0]
-        sub_label = SUB_ENCODER.inverse_transform([sub_pred_idx])[0]
+        kra_label = kra_encoder.inverse_transform([kra_pred_idx])[0]
+        crit_label = crit_encoder.inverse_transform([crit_pred_idx])[0]
+        sub_label = sub_encoder.inverse_transform([sub_pred_idx])[0]
 
         return {
             'primary_kra': kra_label,

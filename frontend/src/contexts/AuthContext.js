@@ -45,22 +45,36 @@ export const AuthProvider = ({ children }) => {
       const response = await api.post('/auth/login/', { email, password });
       const { token, user_id, email: userEmail, first_name, last_name, is_staff, email_verified } = response.data;
 
+      const normalizedUser = {
+        id: user_id,
+        email: userEmail,
+        first_name,
+        last_name,
+        is_staff,
+        email_verified,
+      };
+
       localStorage.setItem('token', token);
-      setUser({ 
-        id: user_id, 
-        email: userEmail, 
-        first_name, 
-        last_name, 
-        is_staff, 
-        email_verified 
-      });
+      setUser(normalizedUser);
       setIsAuthenticated(true);
 
-      return { success: true };
+      return { success: true, user: normalizedUser };
     } catch (error) {
       return {
         success: false,
         error: error.response?.data?.error || 'Login failed'
+      };
+    }
+  }, []);
+
+  const warmupInferenceServices = useCallback(async () => {
+    try {
+      const response = await api.post('/auth/warmup/', {}, { timeout: 90000 });
+      return { success: true, data: response.data };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.error || 'Warmup request failed',
       };
     }
   }, []);
@@ -107,10 +121,11 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated,
     loading, // Expose loading state
     login,
+    warmupInferenceServices,
     logout,
     registerFaculty,
     verifyEmail
-  }), [user, isAuthenticated, loading, login, logout, registerFaculty, verifyEmail]);
+  }), [user, isAuthenticated, loading, login, warmupInferenceServices, logout, registerFaculty, verifyEmail]);
 
   return (
     <AuthContext.Provider value={value}>
